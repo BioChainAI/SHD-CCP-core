@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "spec_id": "SHDCCP-EINSTEIN-1",
+  "status": "proposed-reference-encoding",
+  "source": "Fifteen Lemmas section 6.1 pp.24-26; Fokker-Planck Prime Sieve Release section 8.1",
+  "wire_word_bytes": 8,
+  "wire_byte_order": "big-endian",
+  "bit_numbering": "LSB=0",
+  "fixed_fields": [
+    {"name":"core","lsb":0,"width":32,"form_dependent":true},
+    {"name":"scale","lsb":32,"width":4},
+    {"name":"stream_slot","lsb":36,"width":4},
+    {"name":"form_id","lsb":40,"width":4},
+    {"name":"step_index","lsb":44,"width":4},
+    {"name":"gate","lsb":48,"width":8,"form_dependent":true},
+    {"name":"structure","lsb":56,"width":2},
+    {"name":"wheel_unit","lsb":58,"width":3},
+    {"name":"cycle_step","lsb":61,"width":3}
+  ],
+  "top_byte_semantics": "South Halo = cycle_step:3, wheel_unit:3, structure:2. Prefilter only, not authentication.",
+  "canonical_forms": {
+    "0":"smallest_three_lossy_quaternion",
+    "1":"doubled_hurwitz_exact_core",
+    "2":"prime_triplet_crt",
+    "3":"ieee754_binary32_raw",
+    "4":"voxel_cube",
+    "5":"central_core_8",
+    "6":"stella_octangula",
+    "7":"cuboctahedron",
+    "8":"geodesic_icosahedron",
+    "9":"hurwitz_units",
+    "10":"binary_dihedral_group",
+    "11":"nine_ray_cyclic",
+    "12":"central_cell_8_ghost",
+    "13":"golden_circle",
+    "14":"mod30_wheel",
+    "15":"external_codex_escape"
+  },
+  "explicitly_not_in_this_spec": [
+    "Transport envelope byte layout",
+    "Authenticated session cryptography and nonce scheme",
+    "Complete form-specific encoder and canonical validation for forms 0-15",
+    "Legacy ZONE/TYPE/SEQ/PAYLOAD encoding",
+    "CPU native struct field packing"
+  ]
+}

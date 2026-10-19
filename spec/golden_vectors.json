@@ -1,0 +1,9 @@
+{
+  "spec":"SHDCCP-EINSTEIN-1",
+  "cases":[
+    {"id":"all_zero","fields":{"core":0,"scale":0,"stream_slot":0,"form_id":0,"step_index":0,"gate":0,"structure":0,"wheel_unit":0,"cycle_step":0},"wire_hex":"0000000000000000"},
+    {"id":"all_ones","fields":{"core":4294967295,"scale":15,"stream_slot":15,"form_id":15,"step_index":15,"gate":255,"structure":3,"wheel_unit":7,"cycle_step":7},"wire_hex":"ffffffffffffffff"},
+    {"id":"form1_sample_noncanonical","fields":{"core":68231731,"scale":3,"stream_slot":2,"form_id":1,"step_index":4,"gate":165,"structure":1,"wheel_unit":2,"cycle_step":3},"wire_hex":"69a5412304112233"}
+  ],
+  "note":"The sample asserts fixed field and endian packing ONLY; Form 1 sample is NOT asserted to be a canonical valid Hurwitz quaternion."
+}
