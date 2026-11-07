@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: CC0-1.0
+# Part of contract_vectors/ (CC0-1.0, see ../LICENSE).
+# The Lexicon oracle's one third-party dependency (its hpstep package imports numpy), pinned by version and hash.
+# numpy 2.5.3 is the version the 207-case agreement of 2026-11-07 ran with (Python 3.13). The hashes cover the
+# manylinux x86-64 wheels for CPython 3.12 and 3.13, which is what CI installs:
+#   python -m pip install --require-hashes --only-binary=:all: -r contract_vectors/tools/oracle-requirements.txt
+numpy==2.5.3 \
+    --hash=sha256:a5fa86b80fd24bcd1aff83ad23be44ea323de3f787be8f8b15d4a65621e25321 \
+    --hash=sha256:b7e18c623bb5c95acb3b3328861272816ba199fb531921c5d6d0b675f1fde9e3
