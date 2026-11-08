@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: CC0-1.0
 // Part of contract_vectors/ (CC0-1.0, see ../LICENSE). Written for SHD-CCP-core; contains no code from Owl-Academy.
 //
-// Loads Owl-Academy's scripts/biomesh.js and scripts/seal-crypto.js (MIT, (c) Ebayednoob) READ-ONLY, by name-grab:
+// Loads Owl-Academy's scripts/biomesh.js and scripts/seal-crypto.js (MIT, (c) Ebayednoob) READ-ONLY, by name-grab
+// (loadOwl), and scripts/biomesh-core.js at O3's commit with its one import bound (loadOwlCore):
 //   - each file is read from the Owl-Academy git object store at the pinned commit (`git show <commit>:<path>`),
 //     so the checkout's working tree is never read, written or switched;
 //   - its SHA-256 must equal the pinned value, or loading stops;
@@ -10,6 +11,7 @@
 //     Firestore, registrar, oracle and seal helper becomes a stub that throws (the pure grow cell never calls them).
 //     A trailing `export { ... }` exposes the pure internal functions (crystallize, crystalQuat, ...) by name.
 // Nothing is written to disk. The returned object holds Owl's own functions; this file computes nothing itself.
+// readPinned and asModule are also used by pinned_sources.mjs, which loads import-free modules the same way.
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -33,12 +35,12 @@ const INTERNAL = [
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 
-function readPinned(owlDir, path, expected, commit) {
+export function readPinned(owlDir, path, expected, commit) {
   let buf;
   try {
     buf = execFileSync('git', ['-C', owlDir, 'show', `${commit}:${path}`], { maxBuffer: 1 << 26 });
   } catch (e) {
-    throw new Error(`cannot read ${path} at ${commit} from ${owlDir} (is it an Owl-Academy clone holding that `
+    throw new Error(`cannot read ${path} at ${commit} from ${owlDir} (is it a clone holding that `
       + `commit?): ${String(e.stderr || e.message).trim()}`);
   }
   const got = sha256(buf);
@@ -46,7 +48,7 @@ function readPinned(owlDir, path, expected, commit) {
   return buf.toString('utf8');
 }
 
-const asModule = (text) => import('data:text/javascript;base64,' + Buffer.from(text, 'utf8').toString('base64'));
+export const asModule = (text) => import('data:text/javascript;base64,' + Buffer.from(text, 'utf8').toString('base64'));
 
 function rewriteImports(text) {
   const re = /^import\s+([\s\S]*?)\s+from\s+"([^"]+)";[ \t]*$/gm;
@@ -69,6 +71,35 @@ function rewriteImports(text) {
   });
   if (seen !== 5) throw new Error(`expected 5 import statements in biomesh.js, found ${seen}`);
   return out;
+}
+
+// Owl-Academy's scripts/biomesh-core.js at O3's commit: the strict verifier (verifyIntegrityStrict, RFC 07 section 12.3)
+// whose verdicts are the expected values of shdccp2_tamper. The file's codec functions are biomesh.js's at OWL_PIN,
+// moved unchanged; it imports only sha256Hex from ./seal-crypto.js (the same file as at OWL_PIN). The pin follows O3's
+// published commit; the file's hash may change with it, but its verdicts must reproduce every locked case.
+export const OWL_STRICT_PIN = Object.freeze({
+  repository: 'BioChainAI/Owl-Academy',
+  commit: 'f1d31afd48f8424348972b4d68abf8e23830a539',
+  license: 'MIT',
+  files: Object.freeze({
+    'scripts/biomesh-core.js': '0c7e9b3e7f67e821047537a1be76ec18e96af65bf73864a589597fd458578a69',
+    'scripts/seal-crypto.js': 'ba0a41ae28542d3c38745d817fc9580d34ee9b13ccc36b67e6c2fd4fd300c0e1',
+  }),
+});
+
+/** biomesh-core.js at pin.commit, evaluated in memory with its one import (sha256Hex from ./seal-crypto.js) bound to
+ *  seal-crypto.js of the same commit. Only exported names are reachable; the text is otherwise unchanged. */
+export async function loadOwlCore(owlDir, pin = OWL_STRICT_PIN) {
+  const scText = readPinned(owlDir, 'scripts/seal-crypto.js', pin.files['scripts/seal-crypto.js'], pin.commit);
+  const coreText = readPinned(owlDir, 'scripts/biomesh-core.js', pin.files['scripts/biomesh-core.js'], pin.commit);
+  if (/^\s*import\s/m.test(scText)) throw new Error('seal-crypto.js gained an import; the loader must be reviewed');
+  const imports = coreText.match(/^\s*import\b.*$/gm) || [];
+  const ONE = 'import { sha256Hex } from "./seal-crypto.js";';
+  if (imports.length !== 1 || imports[0].trim() !== ONE || /\bimport\s*\(/.test(coreText)) {
+    throw new Error('biomesh-core.js has other imports than sha256Hex from ./seal-crypto.js; the loader must be reviewed');
+  }
+  globalThis.__shdccpOwlCore = { SC: await asModule(scText) };
+  return { CORE: await asModule(coreText.replace(ONE, 'const { sha256Hex } = globalThis.__shdccpOwlCore.SC;')), pin };
 }
 
 export async function loadOwl(owlDir, pin = OWL_PIN) {

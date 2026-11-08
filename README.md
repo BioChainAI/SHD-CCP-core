@@ -13,5 +13,6 @@ Reference command from workspace root: `python -m unittest discover -s ../../tes
   vectors, generator, drift check and lock.
 - RFC 07's text and the `contract_vectors/` folder are CC0-1.0 (a small fragment of `contract_vectors/schema.json`
   copied from SHD-CCP stays MIT); the rest of this repository stays GPL-3.0 ([`NOTICE`](NOTICE)).
-- Check them with `python3 -B tools/run_checks.py --owl ../Owl-Academy` (Node 20 or later and an Owl-Academy clone);
-  CI also runs the independent oracle (`--lexicon-root`) and the immutability check against the base commit (`--base`).
+- Check them with `python3 -B tools/run_checks.py --owl ../Owl-Academy --biochain ../BioChain-AI` (Node 20 or later,
+  an Owl-Academy clone and a BioChain-AI clone); CI also runs the independent oracle (`--lexicon-root`) and the
+  immutability check against the base commit (`--base`).

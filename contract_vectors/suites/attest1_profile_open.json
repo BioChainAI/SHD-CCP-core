@@ -1,0 +1,16 @@
+{
+  "suite": "attest1_profile_open",
+  "spec_version": "0.1.0",
+  "rfc": "07",
+  "wire": "shdccp/2",
+  "status": "draft",
+  "description": "Draft. Identities (RFC 07 section 13.1) whose seed starts with a character on which ECMAScript's String.prototype.trim, which section 13.1 names, and Python's str.strip differ: U+FEFF (removed by trim only), U+0085 and U+001C (removed by str.strip only). The expected values are BioChain-AI's computeIdentityId; the independent implementation (the Lexicon's attest.py, which uses str.strip) gives other identities, so the suite stays draft (RFC 07 section 17).",
+  "generator": "contract_vectors/tools/generate.mjs",
+  "source": [{"repository":"BioChainAI/BioChain-AI","commit":"dfbe3f2e94c2ff8101f39054bedf29ec67f75704","files":{"src/identity/crypto-core.js":"68d0494678abf815f0f626b651f8b071437f1bafd0bf97d1448442576d344375","src/identity/epoch-service.js":"eadfb554c1e134aee5a5a8c73bd26a92aa5e4414ea09c439a131acd1b5e0920b"},"license":"MIT","engine":"V8"}],
+  "license": "CC0-1.0",
+  "cases": [
+    {"id":"identity_seed_leading_bom","note":"U+FEFF is ECMAScript white space, so trim removes it and the identity is identity_trimmed_seed's; Python's str.strip keeps it","input":{"op":"identity","seed":"\ufeffowl academy seed","uid":"uid-0001"},"expect":{"identityId":"0x794F1707AE0D43D7"}},
+    {"id":"identity_seed_leading_nel","note":"U+0085 (NEL) is not ECMAScript white space, so trim keeps it; Python's str.strip removes it","input":{"op":"identity","seed":"\u0085owl academy seed","uid":"uid-0001"},"expect":{"identityId":"0xA7FFF51126FAFD67"}},
+    {"id":"identity_seed_leading_fs","note":"U+001C (FS) is not ECMAScript white space, so trim keeps it; Python's str.strip removes it","input":{"op":"identity","seed":"\u001cowl academy seed","uid":"uid-0001"},"expect":{"identityId":"0x5207053EE211D3C3"}}
+  ]
+}
