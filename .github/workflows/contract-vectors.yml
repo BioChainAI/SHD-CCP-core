@@ -1,0 +1,76 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# RFC 07 contract vectors: drift check, schema, the two rules of D8, the RFC reading and the independent oracle
+# (tools/run_checks.py). The oracle runs on every pull request and push, so every lock entry added relative to the
+# base commit must be reproduced by it in the same run (D8 rule 1).
+name: contract-vectors
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract-vectors:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          fetch-depth: 0              # the immutability rule compares lock.json with the base commit
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        with:
+          python-version: '3.13'
+      - name: The oracle's pinned commit (from lock.json)
+        id: oracle
+        run: |
+          ref=$(python -c "import json; print(json.load(open('contract_vectors/lock.json'))['implementations']['lexicon-chain-py']['commit'])")
+          if ! printf '%s' "$ref" | grep -Eq '^[0-9a-f]{40}$'; then echo "lock.json: the oracle commit is not a full SHA"; exit 1; fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        with:
+          repository: BioChainAI/Owl-Academy
+          ref: 7f45f356f5c46ea0eb099905b2505a06e8c28fd7   # the generator's pinned source (read-only)
+          path: _deps/Owl-Academy
+          persist-credentials: false
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+        # The independent oracle (Ebayednoob, GPL-3.0), imported at test time only; nothing of it is copied (D13).
+        with:
+          repository: BioChainAI/Ebayednoob
+          ref: ${{ steps.oracle.outputs.ref }}
+          path: _deps/Ebayednoob
+          persist-credentials: false
+          sparse-checkout: |
+            Pages/Hyperbolic Lexicon/reference/lexicon
+            Pages/Engram Minds Eye/reference/engram
+            Pages/Hyperbolic Oracles/reference/hpstep
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: 22
+      - name: The oracle's one dependency, pinned by version and hash (its hpstep package imports numpy)
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r contract_vectors/tools/oracle-requirements.txt
+      - name: Choose the base for the immutability rule
+        id: base
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then echo "ref=$BASE_SHA" >> "$GITHUB_OUTPUT";
+          elif [ "$EVENT" = push ] && [ -n "$BEFORE" ] && [ "$BEFORE" != 0000000000000000000000000000000000000000 ]; then echo "ref=$BEFORE" >> "$GITHUB_OUTPUT";
+          else echo "ref=" >> "$GITHUB_OUTPUT"; fi
+      - name: Drift check, rules and the oracle
+        env:
+          BASE_REF: ${{ steps.base.outputs.ref }}
+        run: |
+          node --version; python --version; python -c "import numpy; print('numpy', numpy.__version__)"
+          if [ -n "$BASE_REF" ]; then
+            python -B tools/run_checks.py --owl _deps/Owl-Academy --lexicon-root _deps/Ebayednoob --base "$BASE_REF"
+          else
+            python -B tools/run_checks.py --owl _deps/Owl-Academy --lexicon-root _deps/Ebayednoob
+          fi

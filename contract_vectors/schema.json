@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BioChainAI/SHD-CCP-core/contract_vectors/schema.json",
+  "$comment": "SPDX-License-Identifier: CC0-1.0 AND MIT. CC0-1.0 (../LICENSE) except the schema of the binary property and the spec_version pattern, which are copied from SHD-CCP geometric-engine-spec/test_vectors/schema.json (MIT, Copyright (c) 2026 Schism-Labs-AI) and stay under its MIT licence; see ../NOTICE.",
+  "title": "SHD-CCP-core contract-vector suite (RFC 07, shdccp/2)",
+  "description": "Envelope after SHD-CCP's test_vectors/schema.json (suite, spec_version, rfc, status, description, generator, cases) with binary optional, plus wire, source and license. Uses only type, enum, const, pattern, length, range, items, properties, required, additionalProperties, $ref, allOf, oneOf and if/then, so the dependency-free validator in tools/check.py covers it.",
+  "type": "object",
+  "required": ["suite", "spec_version", "rfc", "wire", "status", "description", "generator", "source", "license", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "suite": { "enum": ["shdccp2_packet", "shdccp2_chunk", "shdccp2_merkle", "shdccp2_arith", "shdccp2_weave", "engram1", "shdccp2_record"] },
+    "spec_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "rfc": { "const": "07" },
+    "wire": { "const": "shdccp/2" },
+    "status": {
+      "enum": ["normative", "draft"],
+      "description": "normative: two independent implementations agreed and every expected value is locked in lock.json; it never changes. draft: generated and checked, not yet agreed."
+    },
+    "description": { "type": "string", "minLength": 1 },
+    "generator": { "const": "contract_vectors/tools/generate.mjs" },
+    "source": {
+      "type": "object",
+      "required": ["repository", "commit", "files", "license", "engine"],
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "files": { "type": "object", "additionalProperties": { "$ref": "#/$defs/sha256" } },
+        "license": { "type": "string" },
+        "engine": { "type": "string" }
+      }
+    },
+    "license": { "const": "CC0-1.0" },
+    "binary": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["file", "fields"],
+          "additionalProperties": false,
+          "properties": {
+            "file": { "type": "string", "pattern": "^[a-z0-9_]+\\.bin$" },
+            "fields": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+          }
+        }
+      ]
+    },
+    "cases": { "type": "array", "minItems": 1 }
+  },
+  "allOf": [
+    { "if": { "properties": { "suite": { "const": "shdccp2_packet" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_packet" } } } } },
+    { "if": { "properties": { "suite": { "const": "shdccp2_chunk" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_chunk" } } } } },
+    { "if": { "properties": { "suite": { "const": "shdccp2_merkle" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_merkle" } } } } },
+    { "if": { "properties": { "suite": { "const": "shdccp2_arith" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_arith" } } } } },
+    { "if": { "properties": { "suite": { "const": "shdccp2_weave" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_weave" } } } } },
+    { "if": { "properties": { "suite": { "const": "engram1" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_engram" } } } } },
+    { "if": { "properties": { "suite": { "const": "shdccp2_record" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_record" } } } } }
+  ],
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9_]+$" },
+    "note": { "type": "string" },
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "packet": { "type": "string", "pattern": "^[0-9A-F]{16}$" },
+    "crystal32": { "type": "string", "pattern": "^[0-9A-F]{8}$" },
+    "bytes_hex": { "type": "string", "pattern": "^([0-9a-f]{2})*$" },
+    "chunk_hex": { "type": "string", "pattern": "^([0-9a-f]{2}){1,720}$" },
+    "f64": { "type": "string", "pattern": "^[0-9a-f]{16}$", "description": "IEEE-754 binary64 bit pattern, big-endian" },
+    "quad_f64": { "type": "array", "items": { "$ref": "#/$defs/f64" }, "minItems": 4, "maxItems": 4 },
+    "quat_text": { "type": "string", "pattern": "^-?[0-9]+\\.[0-9]{12}(,-?[0-9]+\\.[0-9]{12}){3}$" },
+    "slots": { "type": "array", "items": { "enum": ["w", "x", "y", "z"] } },
+    "u16": { "type": "integer", "minimum": 0, "maximum": 65535 },
+    "case_packet": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": { "type": "object", "required": ["chunk_hex"], "additionalProperties": false, "properties": { "chunk_hex": { "$ref": "#/$defs/chunk_hex" } } },
+        "expect": {
+          "type": "object", "required": ["packet", "crystal32", "crystal_codes", "fields"], "additionalProperties": false,
+          "properties": {
+            "packet": { "$ref": "#/$defs/packet" }, "crystal32": { "$ref": "#/$defs/crystal32" },
+            "crystal_codes": { "type": "array", "items": { "type": "integer", "minimum": -128, "maximum": 127 }, "minItems": 4, "maxItems": 4 },
+            "fields": {
+              "type": "object", "required": ["form", "parity", "spin", "payload16", "freq", "amp"], "additionalProperties": false,
+              "properties": {
+                "form": { "const": 9 }, "parity": { "enum": [0, 1] }, "spin": { "const": 0 }, "payload16": { "type": "integer", "minimum": 1, "maximum": 720 },
+                "freq": { "type": "integer", "minimum": 0, "maximum": 31 }, "amp": { "type": "integer", "minimum": 0, "maximum": 7 }
+              }
+            }
+          }
+        },
+        "informative": {
+          "type": "object", "required": ["crystal_0x80_slots", "kernel_normalized_packet", "kernel_normalized_differs"], "additionalProperties": false,
+          "properties": { "crystal_0x80_slots": { "$ref": "#/$defs/slots" }, "kernel_normalized_packet": { "$ref": "#/$defs/packet" }, "kernel_normalized_differs": { "type": "boolean" } }
+        }
+      }
+    },
+    "case_chunk": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": { "type": "object", "required": ["index", "chunk_hex"], "additionalProperties": false, "properties": { "index": { "type": "integer", "minimum": 0, "maximum": 83 }, "chunk_hex": { "$ref": "#/$defs/chunk_hex" } } },
+        "expect": {
+          "type": "object", "required": ["packet", "residual", "residual_bytes", "frame", "leaf"], "additionalProperties": false,
+          "properties": {
+            "packet": { "$ref": "#/$defs/packet" }, "residual": { "$ref": "#/$defs/bytes_hex" }, "residual_bytes": { "type": "integer", "minimum": 1, "maximum": 2250 },
+            "frame": { "type": "string", "pattern": "^[0-9A-F]{16}[0-9a-f]{8}([0-9a-f]{2})+$" }, "leaf": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    },
+    "case_merkle": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": { "type": "object", "required": ["leaves"], "additionalProperties": false, "properties": { "leaves": { "type": "array", "items": { "$ref": "#/$defs/sha256" }, "minItems": 1, "maxItems": 84 } } },
+        "expect": { "type": "object", "required": ["root"], "additionalProperties": false, "properties": { "root": { "$ref": "#/$defs/sha256" } } }
+      }
+    },
+    "case_arith": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": {
+          "oneOf": [
+            { "type": "object", "required": ["op", "args"], "additionalProperties": false, "properties": { "op": { "enum": ["hypot", "qn"] }, "args": { "$ref": "#/$defs/quad_f64" } } },
+            { "type": "object", "required": ["op", "a", "b"], "additionalProperties": false, "properties": { "op": { "const": "qmul" }, "a": { "$ref": "#/$defs/quad_f64" }, "b": { "$ref": "#/$defs/quad_f64" } } },
+            { "type": "object", "required": ["op", "a"], "additionalProperties": false, "properties": { "op": { "const": "qconj" }, "a": { "$ref": "#/$defs/quad_f64" } } },
+            { "type": "object", "required": ["op", "digits", "x"], "additionalProperties": false, "properties": { "op": { "const": "toFixed" }, "digits": { "enum": [4, 12] }, "x": { "$ref": "#/$defs/f64" } } }
+          ]
+        },
+        "expect": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "result": { "oneOf": [{ "$ref": "#/$defs/f64" }, { "$ref": "#/$defs/quad_f64" }] },
+            "text": { "type": "string", "pattern": "^-?[0-9]+\\.[0-9]+$" },
+            "number": { "$ref": "#/$defs/f64" }
+          }
+        },
+        "informative": { "type": "object", "additionalProperties": false, "properties": { "plain_sqrt_sum": { "$ref": "#/$defs/f64" } } }
+      }
+    },
+    "case_weave": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": { "type": "object", "required": ["chunks_hex"], "additionalProperties": false, "properties": { "chunks_hex": { "type": "array", "items": { "$ref": "#/$defs/chunk_hex" }, "minItems": 1, "maxItems": 84 } } },
+        "expect": {
+          "type": "object", "required": ["crystal32", "crystal_quat", "chiral_steps", "mirror_steps", "weaveChiral", "weaveMirror"], "additionalProperties": false,
+          "properties": {
+            "crystal32": { "type": "array", "items": { "$ref": "#/$defs/crystal32" } },
+            "crystal_quat": { "type": "array", "items": { "$ref": "#/$defs/quad_f64" } },
+            "chiral_steps": { "type": "array", "items": { "$ref": "#/$defs/quad_f64" } },
+            "mirror_steps": { "type": "array", "items": { "$ref": "#/$defs/quad_f64" } },
+            "weaveChiral": { "$ref": "#/$defs/quat_text" }, "weaveMirror": { "$ref": "#/$defs/quat_text" }
+          }
+        },
+        "informative": { "type": "object", "additionalProperties": false, "properties": { "crystal_0x80_slots": { "type": "array", "items": { "$ref": "#/$defs/slots" } } } }
+      }
+    },
+    "case_engram": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": {
+          "oneOf": [
+            { "type": "object", "required": ["text"], "additionalProperties": false, "properties": { "text": { "type": "string" } } },
+            { "type": "object", "required": ["mulberry32_seed", "draws"], "additionalProperties": false, "properties": { "mulberry32_seed": { "type": "integer" }, "draws": { "type": "integer", "minimum": 1 } } }
+          ]
+        },
+        "expect": {
+          "oneOf": [
+            {
+              "type": "object", "required": ["tokens", "grids_hex", "j_num", "engramStream", "engramCount", "engramMeanJ"], "additionalProperties": false,
+              "properties": {
+                "tokens": { "type": "array", "items": { "type": "string", "pattern": "^[A-Za-z0-9']+$" } },
+                "grids_hex": { "type": "array", "items": { "type": "string", "pattern": "^[0-9A-F]{16}$" } },
+                "j_num": { "type": "array", "items": { "type": "integer", "minimum": -28, "maximum": 28 } },
+                "engramStream": { "type": "string", "pattern": "^([0-9A-F]{16})*$" },
+                "engramCount": { "type": "integer", "minimum": 0 }, "engramMeanJ": { "type": "number" }
+              }
+            },
+            { "type": "object", "required": ["u32"], "additionalProperties": false, "properties": { "u32": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 } } } }
+          ]
+        }
+      }
+    },
+    "text_input": {
+      "type": "object", "required": ["engrams"], "additionalProperties": false,
+      "properties": {
+        "engrams": { "type": "boolean" },
+        "text": { "type": "string" },
+        "text_parts": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "object", "required": ["repeat", "length"], "additionalProperties": false, "properties": { "repeat": { "type": "string", "pattern": "^[\\x20-\\x7e]+$" }, "length": { "type": "integer", "minimum": 1 } } }
+            ]
+          }
+        }
+      },
+      "oneOf": [{ "required": ["text"] }, { "required": ["text_parts"] }]
+    },
+    "record_expect": {
+      "type": "object",
+      "required": ["chainId", "streamVersion", "leafHashes", "merkleRoot", "weaveChiral", "weaveMirror", "segCuts", "segments", "origBytes", "shippedBytes", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "chainId": { "type": "string", "pattern": "^BC-[0-9a-f]{24}$" },
+        "stream": { "type": "string", "pattern": "^([0-9A-F]{16}[0-9a-f]{8}([0-9a-f]{2})+)+$" },
+        "stream_sha256": { "$ref": "#/$defs/sha256" }, "stream_length": { "type": "integer", "minimum": 1, "maximum": 380016 },
+        "streamVersion": { "const": "shdccp/2" },
+        "leafHashes": { "type": "array", "items": { "$ref": "#/$defs/sha256" }, "minItems": 1, "maxItems": 84 },
+        "merkleRoot": { "$ref": "#/$defs/sha256" },
+        "weaveChiral": { "$ref": "#/$defs/quat_text" }, "weaveMirror": { "$ref": "#/$defs/quat_text" },
+        "segCuts": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 84 }, "minItems": 8, "maxItems": 8 },
+        "segments": { "const": 7 },
+        "engramStream": { "type": "string", "pattern": "^([0-9A-F]{16})*$" },
+        "engramStream_sha256": { "$ref": "#/$defs/sha256" }, "engramStream_length": { "type": "integer", "minimum": 1 },
+        "engramCount": { "type": "integer", "minimum": 0 }, "engramMeanJ": { "type": "number" },
+        "origBytes": { "type": "integer", "minimum": 1, "maximum": 60000 },
+        "shippedBytes": { "type": "integer", "minimum": 1 }, "value": { "type": "number" }
+      },
+      "oneOf": [{ "required": ["stream"] }, { "required": ["stream_sha256", "stream_length"] }]
+    },
+    "case_record": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": { "$ref": "#/$defs/text_input" },
+        "expect": {
+          "oneOf": [
+            { "$ref": "#/$defs/record_expect" },
+            { "type": "object", "required": ["error"], "additionalProperties": false, "properties": { "error": { "enum": ["empty-input", "input-too-large"] } } }
+          ]
+        },
+        "informative": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "owl_message": { "type": "string" }, "crystal_0x80_slots": { "type": "array", "items": { "$ref": "#/$defs/slots" } },
+            "grown_commitment": { "type": "string", "pattern": "^GROWN/1\\|" }, "grown_content_hash": { "$ref": "#/$defs/sha256" }
+          }
+        }
+      }
+    }
+  }
+}

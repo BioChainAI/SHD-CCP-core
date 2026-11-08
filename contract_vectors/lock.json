@@ -1,0 +1,299 @@
+{
+  "about": "The normative lock of the RFC 07 contract vectors (D8). A suite is normative only when the generator's source and an implementation independent of it agreed on every case. Each locked case is pinned by the SHA-256 of the canonical JSON of its id, input and expect (tools/check.py case_hash: Python json.dumps with sort_keys=True, separators (',', ':') and ensure_ascii=False, encoded as UTF-8), so neither the input nor the expected value of a locked case can change. Locked entries never change or disappear: a change needs a new wire version and a new suite. Entries are added only by tools/check.py --promote, which locks only cases the oracle reproduced in that run; CI also requires the oracle to reproduce, in the same run, every entry added relative to the base commit. Informative values (for example the GROWN/1 commitment of shdccp2_record) are outside the lock. CC0-1.0, see LICENSE.",
+  "implementations": {
+    "owl-biomesh-js": {
+      "role": "reference implementation (D5); the generator runs it read-only by name-grab",
+      "repository": "BioChainAI/Owl-Academy",
+      "commit": "7f45f356f5c46ea0eb099905b2505a06e8c28fd7",
+      "license": "MIT",
+      "engine": "V8",
+      "files": {
+        "scripts/biomesh.js": "7ffd768ce8458345b912ed96e4f70db580b31f0b533faba1b880be4887743eb1",
+        "scripts/seal-crypto.js": "ba0a41ae28542d3c38745d817fc9580d34ee9b13ccc36b67e6c2fd4fd300c0e1"
+      },
+      "independent_of_generator": false
+    },
+    "lexicon-chain-py": {
+      "role": "independent oracle (D5): the Hyperbolic Lexicon's Python grower and the Engram reference's engram/1 code, imported at test time only from an Ebayednoob checkout; never copied into this repository (D13)",
+      "repository": "BioChainAI/Ebayednoob",
+      "commit": "5522c0506e20edb4a70c850c7d433221ed6ea883",
+      "license": "GPL-3.0",
+      "files": {
+        "Pages/Hyperbolic Lexicon/reference/lexicon/chain.py": "ffca843d2824cff8e3fd19056a47317264f5916295333e990c2fcbefd186266a",
+        "Pages/Engram Minds Eye/reference/engram/ttmpt.py": "27889bddaf1ce1d96bc9b369cf1b5c86038276c687939763ba64e597fa03014c"
+      },
+      "independent_of_generator": true
+    },
+    "rfc07-reading": {
+      "role": "an executable reading of RFC 07 (tools/rfc07_reading.py); checks the RFC text against the vectors and does not count towards the two-implementation rule",
+      "path": "contract_vectors/tools/rfc07_reading.py",
+      "license": "CC0-1.0",
+      "independent_of_generator": false
+    }
+  },
+  "normative": {
+    "engram1": {
+      "agreed_by": [
+        "owl-biomesh-js",
+        "lexicon-chain-py"
+      ],
+      "cases": {
+        "geodesic": "e2210473e424195df085804cc181e0226abb82c7b304cf0b049cdd2da68f431a",
+        "mixed_case": "dc02dfe06d8273f05248bdcd6ccdc8151072c7ac297baff659b1a3e99d5bdd58",
+        "apostrophe_digits": "41a2b58fb6dabc93d4a6d54f3809d02dde0c6f73e91dd267196b0c3257a6cddc",
+        "non_ascii": "0f623c19d312100e23f7ed1667ba483398e7a25f69294b6f4938b5162cee5a57",
+        "punctuation_only": "d41a7d48898a675bce73b8d74e188c56bacf7d8a76bdff202193a91d76bb95d5",
+        "empty": "3c57bdc7e450f8424e497de73e9c463c7575f8ee55c08b4a03608cad52745403",
+        "sentence": "ae4c4b8762368a319c1e807d39503d07db825da6f1a6614f80724e27f7bd0ef2",
+        "letter_A": "aaead31bb7925d1c9adb458875c3f3f15db3ecc9d80ec7b01d7c81a6f99d5017",
+        "letter_B": "77bbecf975d11a88d54b97c7041c6c34198e6d5f5a2142d9609bad4a0da0fdb0",
+        "letter_C": "f33afe143cc0ff203f9ec3db4e7c1ec1378d6434f49062f28ffa6b43092cfdab",
+        "letter_D": "fc94c12601d4a6dbdbbc7123fd2b0627606bb6c85b239f565c997278de8342e4",
+        "letter_E": "3f497810f0ed55c48832b821bb23a7053e6522fe2da5545a5688c0e92096c093",
+        "letter_F": "1d04e54f8d4dc5dafc3f43ab444e1b5d802278e82e83cbf26b1b46bdcf6dbec8",
+        "letter_G": "533c3aefd1da5cf0afa591b4d4d7d594ea65d3b772ba4d0e4f92ed0c8c18d4db",
+        "letter_H": "852c5846a81a1b34829944ed6679162c37de2b925bf2cac3724db6db28f47c8c",
+        "letter_I": "0e5468118fb7054aa13194368d39a96c8091b65e54e5695d8be5b2db0a27545f",
+        "letter_J": "afa45c98ae63bcb9a538e1a285a65f3589c521685af6632fece82669647e6492",
+        "letter_K": "22fc18c90fc1b9042312cc096163b221dc210b0e785c795d12d8154732847439",
+        "letter_L": "a3f348562c1704228bc9e93d749a33827bd55a2399f98be9aa536707aa04565e",
+        "letter_M": "21b779fa7f97fea25d9b02eb218d605e50be865f321c73b9eeaec36c674d72a0",
+        "letter_N": "9401b97c927f444daaf465f8cdd51df67a30371e52182b59d0cf356149500337",
+        "letter_O": "ef5979077f80756e8998f772605d7a296fcac149ed852f933a49a01378cef732",
+        "letter_P": "f501679196a971cef40a15a872f657ca4ab65937fcb34f762fbb30e8f843293f",
+        "letter_Q": "4dd949c8cda6b3330800ed405a41090ffe6f5d4beaeab709ae10c64d5c7bbd0b",
+        "letter_R": "9a8c1f27c7caa61fbd6029d463da32e5c602a0a1c835536145125a1db36629b5",
+        "letter_S": "0e41fa18893a593d6a7f523dc45e1e0c27174f8213e5f911debbbc1e03aef75e",
+        "letter_T": "1c9a3b0797f5e50cd415d3450323abb2d944eae043643be9f872cc0d8364ead1",
+        "letter_U": "65a72d12f45d919fb2712c4d4fc1139d60884d283669b919bd2efe734d0841d8",
+        "letter_V": "eda489b0ae9b402dd70db0ae3446440b0514a40a04b542a539290eadbaf74031",
+        "letter_W": "c88e2a987eba931b8144757785a95934243158cec50e524e8062a90223aad69f",
+        "letter_X": "e19ddcae50bc89944c8ff5d0c5edb98d046f6c361d1d357674c50bd04e507903",
+        "letter_Y": "6ff9aa74cc36ae7acb94d1f51ea7c486b05e3e6a213eeffe807c971e2664c48a",
+        "letter_Z": "7417fd235bd078dad626deb61ef0d86dc1e29355fc0b4d8109cdeda1ada45366",
+        "mulberry32_65": "58ac55f8de7a88e676aeb4ae27a419babf5197714457c3036ced79dd91caeb97",
+        "mulberry32_90": "d60ddc7cc3cb5c3aef31abccc51ee5364998637e1cc99f2c6f9bc204205bf5ea"
+      }
+    },
+    "shdccp2_arith": {
+      "agreed_by": [
+        "owl-biomesh-js",
+        "lexicon-chain-py"
+      ],
+      "cases": {
+        "hypot_unit": "9fdc04e068a8f6f2d44bfa7c0a39261ed0ffd3ccf8e8764fc9932d99f2a0f3cf",
+        "hypot_zero": "0af0f4c816b7343dcccf0f7c287d424930ef31ded4d6441c8424beba1d3e8d2c",
+        "hypot_negzero": "4f9af986c5080f181c9a9f99a79cbd2aec78889fbcb2593a49567267d834b1b9",
+        "hypot_half": "5abc2f1af1aa71ffe9db077d21e12f6641291882898d09c8a791db1d71763ae7",
+        "hypot_crystal_min": "3a09a041bc78c46e29cedf74c639dcbf5bee2852111beb349bb301c7b95a0efb",
+        "hypot_crystal_max": "a073a30cf7e9122061abdf07e41a17b37ba0d6a81b9234af5b1300f3813bad51",
+        "hypot_tiny": "88ac99928fc0ec3e199272a9ddfee150492522282e5d84b84526eb3a601c4b8b",
+        "hypot_huge": "bcdefcb2c08921f38c8b22dfad5eeacdb68a93eebd2ac6eb8b9bc33127a858ea",
+        "hypot_agrees_00": "9d1cc3c3945fc81f6bae895111111fdaea2bbd3f6e0d6aa224f091af78e0c2a0",
+        "hypot_agrees_01": "d1de0b17c25e13bafc1c75795f4d9129735229a46eea5077b9874a58b8f5e0d8",
+        "hypot_agrees_02": "ef5ccf247ae26ac84c956e6c84b7d09855aeaa1672e2133219a7b27f8aa38fbb",
+        "hypot_agrees_03": "b0ce14dd60bbadd9fc05ee37e0115a929eb92d3f8ec66d9dcdd81adbb2f04861",
+        "hypot_differs_00": "8c22f227ae3e95e04150d5a3d486bef2be618a32fd5a489325d618166bd3eeb2",
+        "hypot_differs_01": "46bb9f87603b4ec64de27cd3c1b8bd5ef31321a154f14ead61e4ae96502dbcde",
+        "hypot_differs_02": "967fcdf614467f474b75428f5bb3c6fd0465324e6e106caf17eb9ddbdb9f0e33",
+        "hypot_differs_03": "436f0b5b8fe09d130086de018605970deb6393977ad96ab49372355fe01f7ca6",
+        "hypot_differs_04": "f6d488664230666caa85d6a21e18f401c31fc074eec540535c4e1fcde8f9a27b",
+        "hypot_differs_05": "9600d43ec839948771265eca4c5120d0e35e6f4dccf1fd9009b445c3aa32a98d",
+        "hypot_differs_06": "1c3c69f2145bb487eb671df74deedabc802f49860df016ce9a321f53ab4b8b5f",
+        "hypot_differs_07": "4306bd2947396545fe94505fbb45d476fb1a68548eb1ec128de8a435f200f8e9",
+        "hypot_differs_08": "d5a0bbf82834de97841954753f73d36953d6d787498170c91d37a22e864440d7",
+        "hypot_differs_09": "19efc07f510675254ec2a093a127e3f8e21d8b47b62d9a1e662caad9829d056d",
+        "hypot_differs_10": "4183dcadbed6dcbfc16e3d0969c8188801df97cccdc4b69a8f3a90d4442f6bae",
+        "hypot_differs_11": "1c508af84b09bbebb4f7d89f63ed90ad28e8768d9cc976efc6cbb46d0fc919e4",
+        "qn_unit": "345b4d4a7efe4589662ead2ab0ed1b1a8cb34196df3e47ae6ef47d0b6b5c3728",
+        "qn_zero": "f7cb14780aa1736f8b9f91e2db961d4f8cf4c4faa9669f6b586cb39ca6d1f3b4",
+        "qn_negzero": "de0d19a1b16414f641167271241beea72e2f4426474eee1c85f0528e42747dce",
+        "qn_crystal_min": "64f158d71459025ae3551110588e70b1f66c377905af3b55898e8fa8c0c8e927",
+        "qn_mixed": "fe08ec985f60cef89f5cc337eb1a8a518d92cd794de58d8bdb0d9c766495b8de",
+        "qmul_0": "6e88b9cac7bbdbb3fee8fcd21a65b9475b667fdc9ff6f3a20302f26b830bfbd6",
+        "qmul_1": "04b7db81f8e13e0226f7488a067532237ff384f924abb629f8a48993d1cdb49a",
+        "qmul_2": "fb382a9ab9a42e535c06f004078daf3021ff7e22baf2d56e50af13df5af2efdc",
+        "qmul_3": "a789a292a9c337d015ca42af3f3bd58d8a70731336f731e96ef988c9c9f8155a",
+        "qmul_4": "3e1d433bc570d6118e997fdf9945778d83c5249ae54a4c7abee9dd3770252de6",
+        "qmul_5": "bcf22742fb54adb633a5dea8f98ab8a8077ec28d9185c03d454c4c1446ef3666",
+        "qmul_6": "29f8ef83a5aa2d3ea685baafa183b7049faee2adea30beb4d3084e326aed0d52",
+        "qmul_7": "a78d0e6c7bc98061e113e6d7df9363db77f7fc903127fff6a337de1dfedca984",
+        "qconj_0": "63224eaead2ba128cfaadd65ce494ab6236a775ca35195460c5c7076e025f5c0",
+        "fixed12_tie_up_1": "d5ad37e03d3b9af0c6abae279b35bb884a835a5740204e12ffb1ff398407b7fa",
+        "fixed12_tie_up_3": "22414d723ae50d98b13f92cb97b7dba7defbb40060c8937ed76422834ff12cef",
+        "fixed12_tie_neg_5": "18010f71dc1a76feb3491d9e3b24e4c92a908989784a7051666ac70f1cc52d39",
+        "fixed12_tie_up_8191": "6fdd8cd1b67a13ffc8c230133ae1437f27e636d7c0181fa8487f5f37b56cf1bc",
+        "fixed12_negzero": "a9c01007dbfa4f3c4f88e3b25532067b4d3da9884c55b7d11606ad16b16c3dbd",
+        "fixed12_tiny_negative": "536bd613a5b7e5636e6080a8005631477d25ec7f9c93f87c262079a1e5fc9ece",
+        "fixed12_tiny_positive": "666f12091c4059f7813de0e2b6c67c32735cdc4a71c4a7b5ddffb75ac6a3f749",
+        "fixed12_near_one": "80f3375c0cb1ed23606ab7f203221c4f7edee2642ed857ad2890a323ac1ce196",
+        "fixed12_near_minus_one": "e90855e3c1ad2e4db1a27430d02d20da766c7ab34fd6b4c15cf864f5646454f5",
+        "fixed12_one": "a99c1b354addd8dabbf463a5c5987498901431711816fc4c84dbc0dadb0f1878",
+        "fixed12_minus_one": "49df69a87eb0e6aaecdc44d5257f4f11a98eac1adbd9e8a55ba1eaddb2fea75a",
+        "fixed12_third": "43c153123d4f3bb71465d4c07a4083538ec95592f9b93c467f514477119ef5f7",
+        "fixed12_crystal_min_w": "e414e2ec00d61fbc0ce5cda7ae0f696400ff72b3f22317d8b703991332bb2cda",
+        "fixed12_below_minus_one": "ddff2807a3207e6a26d7c7c68744f4c5257babeb830564c0b29d46ac960726be",
+        "fixed4_tie_1_32": "c90e6a6c219e9c33e31b0e3b013cdcb41cd0cece9ec6f3539044e02d8d9c24d4",
+        "fixed4_tie_3_32": "a3c1227d46af02e5e337540020cdbf362233e5bad86d271a1370f51fe43035cb",
+        "fixed4_tie_neg_1_32": "d2dbec35f71e5e2c77e233f9ba303ff678543760f6eb7e89e3bd456c50a5c0ec",
+        "fixed4_tie_neg_5_32": "f2ccaea74e00d05a5a27c45b51901ae09a5e4600d3a9b39c2a5163578dea25e5",
+        "fixed4_tiny_negative": "13df812e01b79b477672a92c941e8f85f2a7744eae9d7a7cbcf73baabd501d7d",
+        "fixed4_ratio": "696d8905e1d797c4a05853d2a78819bb1007978a4ddaaea545978e8540a1b473",
+        "fixed4_one": "3f1b73e4807de09318ffa022fd32545663f75b16112ea91daecde7160182f81c"
+      }
+    },
+    "shdccp2_chunk": {
+      "agreed_by": [
+        "owl-biomesh-js",
+        "lexicon-chain-py"
+      ],
+      "cases": {
+        "hello_0": "923a42b2471e36358ae256241d51118f4b58428c7c3bddd42e81dc31a939e72d",
+        "repeat_a_720_0": "bceca96c724c24a5672a41d78ec3b94a59d6c3ba55c7d6339ae7637b81b31c19",
+        "eacute_0": "66333a7bda05d0a41b88f0f06e6ecd728a83fa054dbe0244729c5b35a085c9ca",
+        "split_2byte_0": "516023418c9c1026925f25c0a7dc64d241d0b90f32137373bf96dabf5522ac90",
+        "split_2byte_1": "32c4a792cbc72fdee5b13fcf9b7820b45ee771bd3f4eaabc519b79b147d3c422",
+        "split_4byte_0": "dbdd30c96b69d7b6f061c15f674fa8b7544c1109dc94bbb156c44ea941484cbb",
+        "split_4byte_1": "709f39e635611332bc9cb9da23d010888fa4d79f92ea8c803e93089ea28cebe1",
+        "latin1_range_0": "e15e25c6d180da9c7ecc9013c04268566ac20fb27bfa22cee7d949ebf078c2f8",
+        "many_candidates_0": "7d2d6c9ea56db93bae6799bdc3d77a04aece55187b97ea452ac7cbdd622d17d3",
+        "random_words_3_0": "cd545bc4a4a4d4c5e646ab2c0a1f2b0226130a27adfc1d68ad1f8afea110ccc2",
+        "random_words_3_1": "f22f2083d186f7329af15d3782b54955ee5565f77d10112a4efb5578248e2cd4",
+        "random_words_3_2": "f7d24ba3a1180f2f90ea3be023a4e316262f5787e3043f5029f9dc7d2c79b2f7",
+        "ascii_60000_tail_0": "ad7e3b8fa6bacacada27ab01ebc79d1d5e3b09966adf6cf9a8187d6320c2390f",
+        "ascii_60000_tail_82": "6b7e51a878b72c6d2a10892ef1132e74cef332cb8c9b1c12b8876b49c9d3f1ba",
+        "ascii_60000_tail_83": "b0c346c02d0021f8ef3189d5488a93afe85cd40d348a4b79f487f7143f44990d",
+        "index_bound_0": "8f63b61b4914d4a7ed6805711a3ebd026355ab7b5d267d45a224c0fbeb9686d0",
+        "index_bound_1": "51e86aa7dce5bbc57b6a724c1e62265b9ee1f021fd58f1e3750575686e6db199"
+      }
+    },
+    "shdccp2_merkle": {
+      "agreed_by": [
+        "owl-biomesh-js",
+        "lexicon-chain-py"
+      ],
+      "cases": {
+        "k_01": "70e1492a4127002096d8e09de7f0008f9b7ffbaaeb3e9f20c54375b6a65dbb2e",
+        "k_02": "c66a00b13677cd19e14495b3564564e0a9e13693673ea9268fe5518998ca27c1",
+        "k_03": "660f7bc02560d68c517512916f7f406312ce74545cd66121285085f066bf10d9",
+        "k_04": "b2198ffd16298ac123de589b74e4659784a744fd4ad2fac5e1fffe04275ee1ae",
+        "k_05": "8ade27e2f0cce1127b9d3817bdc96dc87b6a45bb79b1c8aa9d8ef5ae4413214b",
+        "k_06": "153089fcb821ff5b9dcc803444dd82a43bd30bed9f77a7d3740fe669453e76b5",
+        "k_07": "043d4440c8ef3eacecbeee59e24b1a1b94621004c453be4dab2534f49dd0ab66",
+        "k_08": "d4126b73a8b37f4403c7f894c8cbe62fa1d0826e8e5277d28300abe53fd8904c",
+        "k_09": "ebe142a81a3ad946798d18f35de6894a218eb112e185dfc3f90b3058de08b6a2",
+        "k_16": "91600cd385cf52d190a493fbcc74670cb5dc09f536abf45b0ff841a72743a5b2",
+        "k_17": "68a3a6e2e902f70ed9245772ea259d09d847767b752a06514df3a18ca5c2294b",
+        "k_33": "d1cdb5956ad383c1dadcec32d8768e2db80a5d73f20011db7a9f7053e1ddd891",
+        "k_84": "2d31aa2bd5d7544ab22f4fa394b93f342a72da06cb0091d84fe76059ca9025ea"
+      }
+    },
+    "shdccp2_packet": {
+      "agreed_by": [
+        "owl-biomesh-js",
+        "lexicon-chain-py"
+      ],
+      "cases": {
+        "golden_bytes_0_59": "bfaa6afa582bf0b019d4a0bf9c1371974685fa574327dc0e1ae1dac5c478f805",
+        "one_byte_00": "9a1ccd46b7cb44d1f9b4004a6f384e01c19071d7d70ac311130cbbfb536c5faf",
+        "one_byte_ff": "3ec6194057482d9fde17c71d6959aed6087d9f2c98b5cc20d7657a1d362f3c45",
+        "one_byte_80": "a01c36eec04f8b02f4354c356139a950a4e4bc416183dce3d536b3e6c5451f68",
+        "ascii_owl_academy": "dbed421f3f005eb974e73dc2962b4bd022538fdf2f50bde6d87264d6306eb389",
+        "full_720_ramp": "70db62a73a29d0c924a372da416f4bb59c1860a0fb842e494057dbe0b2a3fc20",
+        "full_720_ff": "03545b2371a1aac3d70451e45d9362c359660f28dcb3cf9f7838f16bd8392454",
+        "x80_w_00": "dd6c342e2b0bd4a238248fb1ba48b1ebe063403388c042e995fd4e9af4688ec2",
+        "x80_w_01": "6323af1904836ba0cda655e900c7136da38a088ae6225c6b1c8e11ff802e9045",
+        "x80_w_02": "1c1a1230c7710c0807c87ec6bf7144d5b9f8d5e7c00e5d1427219a085aefe984",
+        "x80_w_03": "eca6a6040a2aa4901504cd2e9569cc17e4b6dcb8920911173e3ee4c2a3d26e69",
+        "x80_w_04": "d92b83169dd464cc2643a446fc3409ab0c6cf7866744b7d567655ab59407ca35",
+        "x80_w_05": "d01b1c23597a8e8f324cc9b6001822d6b5b178d3fce91caf313f751298175729",
+        "x80_w_06": "4e5cf7d5bc772b564f2c20ce1eba6837afc343500ac3f5a31691d5f994d94815",
+        "x80_w_07": "777f7152baad4d427a3c8939ce50e6d6958c08db74f90bdf808ee383f4c84968",
+        "x80_w_08": "5901287dfce744db2a6832143ee880cde657e5218aa56adf69284f40b382fe14",
+        "x80_w_09": "9d67a73b2806744aa27c37ef472b6489768bd7a25e98c77ede7881fea29f7917",
+        "x80_x_00": "6117dc645e696cd556f217a0accee38e99f50d669c8b81d47cbbdbb5144e519c",
+        "x80_x_01": "2b988e4d35ccf3fa1cccda296e0c37dda4c3360a653345627e4dca330ee542a6",
+        "x80_x_02": "71e80c1def7404cda58c0f745c6f2f6b8331d155a992dce06313d366b37cd165",
+        "x80_x_03": "724813fa562d8a9b78b807616991b222c7c9595cf81470717a7152bfdcf9cb31",
+        "x80_x_04": "a0e5a223ee1a1c1bdef35cbea84890381c3fb87ea5a93c6bd00b888fe378b8e1",
+        "x80_x_05": "250d8a1d1a0dcd6d7d6cd3ab686ffbae48708d5e13ac036ca2b6be88ea2f2300",
+        "x80_x_06": "2d92957c3245e3366abe211bbc0d037e81c2e6aec3b8c5f93e337230ab28b6a6",
+        "x80_x_07": "b326698c786a6375e2c67e78e572b5db1cda651e57ceba8bc194c7528d6381e5",
+        "x80_x_08": "2acd34d5acea0a12f7dbde358b803b72dd3334f8356ef34c4b17d22070ad4b6d",
+        "x80_x_09": "9f08f95f4ff2c9a09eb97c190c5f32ca7cc9b21ca7fc1af1e7f57349973e8363",
+        "x80_y_00": "1558c890b617088b56778efcc01a95a6a9550ab008ffd9b3f21819db03079b20",
+        "x80_y_01": "3fe61e998452169aa348bc96a1c65793f5abca289e5a08c6b8e2ac8383e97224",
+        "x80_y_02": "964f23e41437ebc8dd89817d805d206be410fdf9504683d8d1a1fb5a83f39bf1",
+        "x80_y_03": "d3148be29f5281b631b908572e7bcb6ae2ee4c1065e1ebba562bc4d062312e90",
+        "x80_y_04": "f62df7e7d0406c945cfc772ca05c2c7cd55252889c3caeab8a3b8952811ad7f7",
+        "x80_y_05": "00083987721535540c14c5381e2c54ea5a079df1401c3e29de435ba0e373264e",
+        "x80_y_06": "dacce9b7d995e895592e62c2b9732e7fc423b9124dc3b050c585ce4adfd2e450",
+        "x80_y_07": "127cf94a9ec8412f2f2a69a83b7e8706a431a39185a1343eafc18a908c132a35",
+        "x80_y_08": "0729c0c3ef417c06399608e8bfe71034d0d1cc4beb094da428f5ed896d3969cf",
+        "x80_y_09": "51b3fc7255c9d7c78e117efdda9e65abe1fc0ff53b099c61e504882875cbc408",
+        "x80_z_00": "598aaef9fb50bd941627f204414b1d5023621514108891443d1ecfcb0d614489",
+        "x80_z_01": "06ee3ae55469fd309b0a57d7b5bcc44beca4608ddec74bcd7ab39b6b049787da",
+        "x80_z_02": "80d4b484322e09782967bc94d18dc1764ba81b6eedf58a22a876184a9f1b0914",
+        "x80_z_03": "f530a6ce595a7bbce6602bc680836b89f7899eeb56d54dea348275e5bdf3756f",
+        "x80_z_04": "69d24907266a573ee2dc016cc74a5b30f0a4a1e8e4a2dac1b8ad5633640e0db5",
+        "x80_z_05": "fc66c1a455ccb84a335a64de235aa9c7982b55b3e821f1ef6cf019b0ddef63aa",
+        "x80_z_06": "42633d7cf8554010150186d195a5b8ce0ddb978bf83a4068908f3ba8910e78d6",
+        "x80_z_07": "9a11e235378a7f668f34082dc973cfff24a63fea61b87cd0e22669bb3950093c",
+        "x80_z_08": "1b0d0a4d7ec97dd9d854822df04d4023e45c36937a1c4182e571447b76f2cadd",
+        "x80_z_09": "ef541a57020c0a59cd0bb43b866f1d9bd667b0fdfd7e5d2776bc05795b1fed1a",
+        "x80_wy_01": "e9d6c4baada776b08d40c017ab5e2d09da3cdc7e3406d0cd4309dbefcdc0b4a6",
+        "x80_wz_03": "289828aafe3742019ed11926856e57f370a26c18b774818979287f86b20c9ee1",
+        "x80_wz_04": "6fc43751c2eb3ec37a4271f25202f95bbdb4824c1a47f99b7d40c3e60db2d48f",
+        "x80_xy_02": "e10a60a0873492db6687113f4d1ff238214b255fb123353bab8187f13a33720e",
+        "x80_xz_00": "7255020e00e384800efa0f60f3df6216e4d6ccaaac953a864e7b413bbaf0b06e",
+        "x80_yz_05": "f8dad68abd91bf5e029beb179dc0fe1471f28dcd61cf1ea7fa792ede7e4f9202"
+      }
+    },
+    "shdccp2_record": {
+      "agreed_by": [
+        "owl-biomesh-js",
+        "lexicon-chain-py"
+      ],
+      "cases": {
+        "one_byte": "c463d56e31c21ddcfcb85b145accce43ee519bedca3f11ce9794c58e4c29d437",
+        "geodesic": "0daa71d4f2b38a0ca55409229783a21bd53f5bc8dc2b62010dfc35e647703bc9",
+        "geodesic_no_engrams": "dfdbb8588ac5d203ac26cec46ba245b6416871e323f3d29122b8399e9952959c",
+        "leading_bom": "38906e4c39c7e7e15eeedb8f39858ee53a3ce1aaf8f2cd4a6579a593ca8cef4f",
+        "no_tokens": "8b891393934a2836ccd3b0e162d3d15ce4cdb8091aa7c4ff185eb479b22154ef",
+        "tokens_mixed": "2dc05bca12323f40783aa2e4461989be4e2c7cec941c0e546423ce2891c4b52a",
+        "utf8_multibyte": "53d2fc5d3daec1420f4ef4d2ec018d5d5a4858d2f4c821408c82587275a26fa6",
+        "meanj_tie_positive": "8022a8d044d3a5ce5f7e2899a705f62a510ee838d0a2541f745e9e0907caee1f",
+        "meanj_tie_negative": "647569666af7f29649f6c0fee5505ba7dfce2b163a81fb8760f2db41d4fb876a",
+        "ascii_719": "44c287d650090f8b725891cf25b3ad96e86a67d5f5888dc64453866b8c3db05c",
+        "ascii_720": "ab625b28d0b4f388e8722796e00926430986fd785cf6d3edf3d25416540cc280",
+        "ascii_721": "767c9e51326fc7611c7bb92aa87564522c9df168ea3b923714d919558002a363",
+        "ascii_1440": "4d8b542753d301b49325b2ebd886cb58ad05ed30609c63c09cdd846bc4e473d3",
+        "ascii_1441": "c94b7b95d1a8a3778ad7316fb54259905061985dd001c2305515d192324b2751",
+        "split_2byte_at_720": "c79a6c4e6adb48408af4d1fe61ca9e288d4471d3fcf7c0c1cc63938556b5cd8f",
+        "split_4byte_at_720": "c5336b60c6af785f9b562213ffeae15e37e93f1fd7a2bbefbacb97cc87bee897",
+        "x80_single_chunk": "8fbf088d700ec6c3c084ead2d00b0f58292982eeb041fa99efecd8b40b87eaa4",
+        "x80_three_chunks": "16a6a7204d585df9db43c3d06b75eb5be7cf45cd9702367a27678d0b10fd105c",
+        "words_7_chunks": "dd552dcf418a58b5e075e605007d703f8733ccc2cedd17c28bd697e35f208eac",
+        "max_60000_repeat": "787a253535d4021993dbcf8f9d6e9df883b93a492383a711a1986b9a883b2114",
+        "max_60000_words": "256f26e733d58605c42c868c19e098c0c7d71e6c11561bf07a865a28eed9d2d9",
+        "error_empty": "d708b12dfc97c5ac46627f87f01c033c4ca25a51e8f1053303bc330e6242b02a",
+        "error_60001": "999b76b488c673a37e2f737007cead5a143788a9d4b416d18ed8a3a0fbf4a187",
+        "error_60002_multibyte": "3feebb70302296c44432b8e281453f370e92d6aae497ef2abd24c4331bd5a70d"
+      }
+    },
+    "shdccp2_weave": {
+      "agreed_by": [
+        "owl-biomesh-js",
+        "lexicon-chain-py"
+      ],
+      "cases": {
+        "one_chunk": "553d9a51846b85de5c020414cefab1172c96720d7fccec0ddcc657091e7bd2ed",
+        "x80_w_then_plain": "02e7a8010cde68d192205a06482e1d07fe8a574de784d4ea17a1ebe6d963a0fd",
+        "x80_x_y_z": "8da45b2448e7742d506e9556676e3f9e24beb58bacf95da7e04c5c6aa24ffb67",
+        "x80_w_x80_w": "868eff808bb5b63c15d08a5c321cc07deec84d098fdbcf695c714bbac3e1825c",
+        "eight_chunks": "dbe1c5527df76ea2f6b6de86601db8ea1dfca916ac4ff7ce168eae3b7d6c4bb6",
+        "repeat_20_chunks": "b7f64cc5f4ec2964515342648aad7af6f276d4ef38be6233e1ff819a8b44492f"
+      }
+    }
+  }
+}
