@@ -24,8 +24,9 @@ Third-party material and how it is used:
   clone's git object store and runs them in memory to compute the expected values. No part of their code is in this
   repository; the vector files hold only inputs and the values those functions return.
 - Owl-Academy scripts/biomesh-core.js (MIT, (c) Ebayednoob), the strict verifier, at commit
-  f1d31afd48f8424348972b4d68abf8e23830a539 (O3), read and run by contract_vectors/tools/generate.mjs the same way (for
-  shdccp2_tamper and shdccp2_tamper_open). No part of its code is in this repository.
+  cf1227a6912394ca6424d931ef0330c6be97a915 (O3's verifier in the order of RFC 07 section 17's option (a)), read and run
+  by contract_vectors/tools/generate.mjs the same way (for shdccp2_tamper and shdccp2_tamper_open). No part of its code
+  is in this repository.
 - BioChain-AI src/identity/crypto-core.js and src/identity/epoch-service.js (MIT, (c) Schism-Labs-AI), at commit
   dfbe3f2e94c2ff8101f39054bedf29ec67f75704, read and run by contract_vectors/tools/generate.mjs the same way (for
   attest1_profile and attest1_profile_open); and BioChain-AI protocol/codex_engine.py and protocol/shdccp_kernel.py (MIT, (c) Schism-Labs-AI) at

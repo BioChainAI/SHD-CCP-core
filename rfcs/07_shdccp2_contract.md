@@ -6,8 +6,8 @@
 | **Status** | Draft text. The wire format it describes is already deployed and frozen: every published chainId commits to it (D6). |
 | **Spec version** | 0.1.0 |
 | **Wire version** | `shdccp/2` (the record field `streamVersion`) |
-| **Vectors** | [`contract_vectors/`](../contract_vectors/): `shdccp2_packet`, `shdccp2_chunk`, `shdccp2_merkle`, `shdccp2_arith`, `shdccp2_weave`, `engram1`, `shdccp2_record`, `shdccp2_limits`, `merkle_rules_same_bytes`, `rfc6962_lists`, `attest1_profile`, `engram1_keys`, `rng_mulberry32`, `shdccp2_tamper`, and the drafts `shdccp2_tamper_open` and `attest1_profile_open` (section 15) |
-| **Reference implementation** | Owl-Academy `scripts/biomesh.js` at `7f45f356f5c46ea0eb099905b2505a06e8c28fd7` (MIT), the generator's pin; its functions moved unchanged to `scripts/biomesh-core.js` at `9e7701fa26eb4b1be40fc96521dde76fa9d320d6`. The strict verifier of section 12.3 is `verifyIntegrityStrict` in `scripts/biomesh-core.js` at O3's commit `f1d31afd48f8424348972b4d68abf8e23830a539` (Appendix D; the pin follows O3's published commit) |
+| **Vectors** | [`contract_vectors/`](../contract_vectors/): `shdccp2_packet`, `shdccp2_chunk`, `shdccp2_merkle`, `shdccp2_arith`, `shdccp2_weave`, `engram1`, `shdccp2_record`, `shdccp2_limits`, `merkle_rules_same_bytes`, `rfc6962_lists`, `attest1_profile`, `engram1_keys`, `rng_mulberry32`, `shdccp2_tamper`, `shdccp2_tamper_open`, and the draft `attest1_profile_open` (section 15) |
+| **Reference implementation** | Owl-Academy `scripts/biomesh.js` at `7f45f356f5c46ea0eb099905b2505a06e8c28fd7` (MIT), the generator's pin; its functions moved unchanged to `scripts/biomesh-core.js` at `9e7701fa26eb4b1be40fc96521dde76fa9d320d6`. The strict verifier of section 12.3 is `verifyIntegrityStrict` in `scripts/biomesh-core.js` at `cf1227a6912394ca6424d931ef0330c6be97a915`, which follows O3's commit `f1d31afd48f8424348972b4d68abf8e23830a539` with the order of section 17's option (a) (Appendix D; the pin follows the verifier's published commit) |
 | **Licence** | CC0-1.0 ([`LICENSE`](LICENSE) in this folder). The code of this repository stays GPL-3.0 (see [`../NOTICE`](../NOTICE)). |
 
 The key words MUST, MUST NOT, SHOULD and MAY are to be read as in RFC 2119.
@@ -138,6 +138,11 @@ A conforming verifier parses a stream as follows and rejects it on any failure:
 4. each packet has even parity (section 5.5); its payload16 is 720 for every frame but the last, and 1 to 720 for the
    last;
 5. each residual decodes to payload16 bytes (section 6.4) and is canonical (section 6.5).
+
+These rules define a valid stream (section 12.1, step 1). A strict verifier reports a failure of them in the order of
+section 12.3, which places the case of items 1-2 after the parse: its parity check reads hex digits of either case,
+a residual or a residual length not in lower case then fails at canonical, and a packet not in upper case fails at
+crystal (section 17, option (a)). Every such stream is still rejected.
 
 Owl's `parseBiochainStream` today is more lenient: it accepts either case, does not check that residual characters
 are hex digits, and the decoder ignores residual bytes after the last code. Records grown by Owl always satisfy the
@@ -636,25 +641,42 @@ section 12.1 keeps.
 
 A strict verifier (Owl's `verifyIntegrityStrict`, O3, and the copies generated from it for BioChain-AI, B2, and the
 Engram page, E3) checks the predicate of section 12.1 as six checks, in this order. It stops at the first check that
-fails and reports that check's name.
+fails and reports that check's name. The order is the one the Hyperbolic Lexicon's `verifyPackage` (steps 1-6) uses,
+so that both name the same first failing check (section 17, option (a)).
 
 1. **parity**: R is an object (a JSON object, not an array) with a string `stream` and `streamVersion` "shdccp/2"
-   (otherwise R fails here, and a record of that kind is legacy, below); the stream parses strictly (section 4.3,
-   items 1-3) into at least one frame; every packet's parity holds (section 5.5).
+   (otherwise R fails here, and a record of that kind is legacy, below); the stream parses as items 1-3 of section
+   4.3 require, except that hex digits of either case are read (`[0-9A-Fa-f]` in every position; canonical and
+   crystal check the case), into at least one frame; every packet's parity holds (section 5.5). A character that is
+   not a hex digit, a short residual or frame header, and characters after the last frame fail here.
 2. **canonical**: the payload16 of every frame but the last is 720, and the last is 1 to 720 (the 720-byte cut); the
    total is at most 60,000 bytes; each residual decodes to payload16 bytes (section 6.4) and is canonical (section
-   6.5); framing the packets and residuals again gives the stream exactly (section 4.2); and the decoded bytes are
-   well-formed UTF-8 (section 12.1, step 2).
-3. **crystal**: every packet equals `crystallize(chunk_i)` under the raw rule (section 5.4).
+   6.5), compared as text: `encode` writes lower-case hex, so a residual with an upper-case digit fails here; and
+   framing the packets as read and the residuals again gives the stream exactly (section 4.2): the framing writes each
+   residual length as 8 lower-case digits, so a length with an upper-case digit fails here.
+3. **crystal**: every packet equals `crystallize(chunk_i)` under the raw rule (section 5.4), compared as text:
+   `crystallize` writes upper-case hex, so a packet with a lower-case digit fails here.
 4. **leaves**: `leafHashes` is present with exactly K entries, entry i equal to `leaf(i, chunk_i)` (section 7.1), and
    `merkleRoot` is present and equal to the root of the leaves (section 7.2).
 5. **weaves**: `weaveChiral`, `weaveMirror`, `segCuts`, `segments` (7) and `chainId` equal the values sections 8 and
    10 give for the chunks.
-6. **derived**: when R has any of the three engram fields, all three equal the engram layer of T (section 9.5); and
-   `origBytes`, `shippedBytes` and `value` equal section 10's values.
+6. **derived**: first, the decoded bytes c_0 ‖ … ‖ c_{K−1} are well-formed UTF-8 (section 12.1, step 2), and T is
+   their text; then, when R has any of the three engram fields, all three equal the engram layer of T (section 9.5);
+   and `origBytes`, `shippedBytes` and `value` equal section 10's values.
 
 Numbers compare as binary64 values and must be JSON numbers (the string "7" is not the number 7). The six checks
 together are the predicate of section 12.1: a record passes all six exactly when it is valid.
+
+**Where hex case and ill-formed UTF-8 are reported.** Checks 1-5 work on the bytes of the chunks and never decode them
+as UTF-8 (a leaf hashes `latin1(chunk)`, section 7.1), so the UTF-8 rule is checked at derived, the first check that
+needs T. A record whose bytes are not well-formed UTF-8 therefore fails at the first check its change leaves wrong, as
+any other altered record does. With a stream that passes parity and canonical, that is crystal when a packet is not
+`crystallize` of its chunk, leaves when the packets are but the leaves or the root are not, weaves when those are right
+but a weave, `segCuts`, `segments` or the chainId is not, and derived when every other field is computed from the same
+bytes. A stream with a hex digit in the wrong case fails at canonical (a residual or a residual length) or at crystal (a
+packet), as items 2 and 3 say. Until section 17's decision this text checked the case at parity and the UTF-8 rule at
+the end of canonical; the move changes the reported check for these values only, and the set of records that pass is the
+same under both orders.
 
 A record without a string `stream`, and a record whose `streamVersion` is missing or is not "shdccp/2", are **legacy**
 (section 11.1): the verdict is a failure at parity with `legacy` set, and such a record is never accepted as
@@ -666,7 +688,9 @@ legacy: there is no older format it could be in.
 The verdict of a strict verifier is `{ok, failed, legacy, checks}`: `ok` is true exactly when all six checks pass;
 `failed` is the name of the first failing check, or null; `legacy` is true only for a legacy record; `checks` lists the
 checks that ran, in order, each as `{name, ok, detail}`. Owl's verifier is synchronous and takes the SHA-256 function
-as a parameter, so a copy can run with another implementation of H.
+as a parameter, so a copy can run with another implementation of H. Moving a rule from one check to another (section
+17, option (a)) changes `failed`, `checks` and the label for the values that rule rejects; it never changes `ok` or
+`legacy`.
 
 Pages label records by their verdict (D15): "strict ok", "legacy", "failed at <check>", or "self-consistent only,
 failed at <check>" for a record that the self-consistency check of section 12.2 accepts. A failing or legacy record is
@@ -674,16 +698,17 @@ labelled, kept out of seeds and success scores, and never deleted.
 
 ### 12.5 Tamper vectors
 
-The suite `shdccp2_tamper` pins, for each value given to a strict verifier, the verdict of section 12.4 without its
-`checks` and `legacy`: `ok` and the first failing check of section 12.3. Its expected values are the verdicts of Owl's
-`verifyIntegrityStrict` (Appendix D). The independent verifier is the Hyperbolic Lexicon's hardened verifier, steps
-1-6 (parity .. derived: the same names in the same order) of `reference/lexicon/verify.py`, the reference that
-`lexicon_core.js verifyPackage` follows check for check. The two agree on all 79 cases, and `verifyPackage` itself
-gives the same first failing check on every one.
+The suites `shdccp2_tamper` (79 cases) and `shdccp2_tamper_open` (13 cases, below) pin, for each value given to a
+strict verifier, the verdict of section 12.4 without its `checks` and `legacy`: `ok` and the first failing check of
+section 12.3. Their expected values are the verdicts of Owl's `verifyIntegrityStrict` (Appendix D). The independent
+verifier is the Hyperbolic Lexicon's hardened verifier, steps 1-6 (parity .. derived: the same names in the same
+order) of `reference/lexicon/verify.py`, the reference that `lexicon_core.js verifyPackage` follows check for check.
+The two agree on all 92 cases of both suites, and `verifyPackage` itself gives the same first failing check on every
+one.
 
 `legacy` is informative: the independent verifier has no notion of it (its parity step gives the one reason "no
-shdccp/2 record" both for a value that is not an object and for an object with another `streamVersion`), so the
-suite's `informative.legacy` is Owl's flag. `check.py` maps the independent verifier's parity reasons to a legacy flag
+shdccp/2 record" both for a value that is not an object and for an object with another `streamVersion`), so a
+case's `informative.legacy` is Owl's flag. `check.py` maps the independent verifier's parity reasons to a legacy flag
 and compares it with that value, but the mapping is the adapter's, not the verifier's, and does not count towards
 rule 1 of section 15. The values are:
 
@@ -708,26 +733,30 @@ rule 1 of section 15. The values are:
   alone, all three engram fields removed (shippedBytes and value still count them), an engram field added to a record
   grown without engrams, origBytes changed or a string, shippedBytes and value changed, and value a string.
 
-`informative` gives Owl's `legacy` flag and detail, whether the self-consistency check of section 12.2 accepts the
-value (it accepts T1, T2, T8 and T9, among others), and the label of section 12.4.
+In both suites, `informative` gives Owl's `legacy` flag and detail, whether the self-consistency check of section 12.2
+accepts the value (it accepts T1, T2, T8 and T9, among others), and the label of section 12.4.
 
-**Where the independent verifier disagrees.** On ten more values the Lexicon's verifier names another first failing
-check than this text. They are in the draft suite `shdccp2_tamper_open`, whose expected values are this text's (and
-Owl's); `lexicon_core.js verifyPackage` gives the same answers as `verify.py`. Every verifier rejects every one of
-these records; only the check that reports it differs.
+**Hex case and ill-formed UTF-8 (`shdccp2_tamper_open`).** Thirteen values have a first failing check that depends on
+where section 12.3 places the case of section 4.3 and the UTF-8 rule of section 12.1, step 2. They are in their own
+suite, `shdccp2_tamper_open`, which was draft while this text and the Lexicon's verifier named different checks for
+them. Under option (a) (section 17), which section 12.3 follows, this text, Owl's verifier at the pinned commit,
+`verify.py` and `lexicon_core.js verifyPackage` name the same check on all 13, and the suite is normative. Every
+verifier rejects every one of these records under both orders; only the check that reports it moved. The 79 cases of
+`shdccp2_tamper` have the same verdict under both orders.
 
-| Values | This text (Owl) | The Lexicon's verifier | Why |
+| Values | First failing check (this text, Owl, the Lexicon) | Before option (a) (this text, Owl) | Why |
 | :--- | :--- | :--- | :--- |
-| a packet in lower case, or one letter of it | parity | crystal | its parse reads hex digits of either case (section 4.3 asks for upper case); the packet then differs from `crystallize(chunk)` |
-| a residual in upper case, or one letter of it | parity | canonical | the residual differs from the re-encoded chunk |
-| a residual length in upper case | parity | canonical | the re-framed stream writes the length in lower case |
-| ill-formed UTF-8 in records whose other fields are computed from the same bytes (a lead byte at the end, an overlong form, an encoded surrogate, a lone continuation byte, an invalid sequence across the 720-byte cut) | canonical | derived | it has no UTF-8 check of its own; its derived step fails when the normaliser of its V0 id stream refuses the bytes |
+| a packet in lower case, or one letter of it (2 cases) | crystal | parity | parity reads hex digits of either case; the packet then differs from `crystallize(chunk)`, which is upper-case hex |
+| a residual in upper case, or one letter of it (2) | canonical | parity | the residual differs from the lower-case encoding of its chunk |
+| a residual length in upper case (1) | canonical | parity | the re-framed stream writes the length in lower case |
+| ill-formed UTF-8 in records whose other fields are computed from the same bytes: a lead byte at the end, an overlong form, an encoded surrogate, a lone continuation byte, an invalid sequence across the 720-byte cut (5) | derived | canonical | checks 1-5 work on the bytes and pass; derived decodes them first |
+| the record of "a" (`shdccp2_record/one_byte`) with its residual replaced by the canonical residual of the byte 0xE9 (1) | crystal | canonical | the packet is still that of "a" |
+| as the previous, and the packet is `crystallize([0xE9])` (1) | leaves | canonical | the leaves and root are still those of "a" |
+| as the previous, and the leaves and root are computed for 0xE9 (1) | weaves | canonical | the weaves and chainId are still those of "a" |
 
-The suite stays draft until the order is settled (section 17). Either this text moves the two rules (hex digits of
-either case at parity, the case then enforced by crystal and canonical as in the table; the UTF-8 check at the start
-of derived) and Owl's verifier moves with it, or the Phase 2 criterion of matching `verifyPackage` case for case leaves
-these values out. The Lexicon's code does not change either way (D4), and the validity predicate of section 12.1 is
-the same under both orders.
+The Lexicon's verifier has no UTF-8 check of its own: its derived step fails when the normaliser of its V0 id stream
+refuses the bytes. The Lexicon's code did not change (D4), and the validity predicate of section 12.1 is the same under
+both orders.
 
 ## 13. Commitments and the attestation profile
 
@@ -926,7 +955,7 @@ listed, not failures, and it is never locked while they last.
 | `engram1_keys` | 9.6 | Owl `biomesh.js` (`engramOf`) | Engram `ttmpt.py` |
 | `rng_mulberry32` | 9.2 | Owl `biomesh.js` (`mulberry32`) | Engram `ttmpt.py` |
 | `shdccp2_tamper` | 12.3-12.5 | Owl `verifyIntegrityStrict` (O3, `biomesh-core.js`) | Lexicon `verify.py` (`verifyPackage`), steps 1-6: `ok` and the first failing check; `legacy` is informative |
-| `shdccp2_tamper_open` (draft) | 12.5 | Owl `verifyIntegrityStrict` | none yet: the Lexicon's verifier names another first failing check (section 12.5) |
+| `shdccp2_tamper_open` | 12.3-12.5 | Owl `verifyIntegrityStrict` (`biomesh-core.js`, in the order of section 17's option (a)) | Lexicon `verify.py` (`verifyPackage`), steps 1-6, as for `shdccp2_tamper`; normative since the order was settled (section 17) |
 
 ## 16. Changes
 
@@ -942,16 +971,21 @@ the same input is a new wire version (`shdccp/3`), which D6 rules out for this o
       agree on `ok` and the first failing check.
 - [ ] The strict verdict's `legacy` flag (section 12.5) stays informative until an implementation independent of Owl's
       reports it; the Lexicon's verifier has no notion of legacy.
-- [ ] The first failing check for hex case and ill-formed UTF-8 (section 12.5, `shdccp2_tamper_open`): this text
-      reports them at parity and at canonical, the Lexicon's verifier at crystal or canonical and at derived. Decide
-      whether this text and Owl's verifier move to the Lexicon's order, or the Phase 2 criterion leaves these values
-      out. Until then the ten cases stay draft.
+- [x] The first failing check for hex case and ill-formed UTF-8 (section 12.5, `shdccp2_tamper_open`). This text
+      reported them at parity and at canonical, the Lexicon's verifier at crystal or canonical and at the first later
+      check the change leaves wrong. The options were (a) this text and Owl's verifier move to the Lexicon's order, or
+      (b) the Phase 2 criterion of matching `verifyPackage` case for case leaves these values out. Decided on
+      2026-11-09: option (a). Section 12.3 now reads hex digits of either case at parity (canonical checks the case of
+      residuals and lengths, crystal that of packets) and checks well-formed UTF-8 at the start of derived; Owl's
+      verifier follows at `cf1227a`. `shdccp2_tamper_open` is normative with 13 cases: the ten earlier ones and three
+      ill-formed UTF-8 records whose change also leaves the packet, the leaves or the weaves wrong. No case of
+      `shdccp2_tamper` changed.
 - [ ] Owl's deployed `verifyIntegrity` (section 12.2; `scripts/biomesh.js` at `7f45f35`, and the same function in
       `scripts/biomesh-core.js` at `9e7701f`) does not return on a stream whose length field a lenient `parseInt`
       reads as negative (`shdccp2_tamper/length_negative`): its frame loop goes back to the frame start and keeps
-      growing. O3's commit (`f1d31af`) makes that lenient parse throw on a negative length, so `verifyIntegrity` there
-      returns a failure; until O3 is deployed, a page should not run the deployed `verifyIntegrity` after a strict
-      failure at parity. The strict parse already rejects such a stream.
+      growing. O3's commit (`f1d31af`, kept at the pinned `cf1227a`) makes that lenient parse throw on a negative
+      length, so `verifyIntegrity` there returns a failure; until O3 is deployed, a page should not run the deployed
+      `verifyIntegrity` after a strict failure at parity. The strict parse already rejects such a stream.
 - [ ] The D7 measurement of Firefox and WebKit against V8 (section 8.7, O3).
 - [x] The kind registry (section 11.3).
 - [x] The engram/1 key of a string used outside records (section 9.6, `engram1_keys`).
@@ -1016,20 +1050,22 @@ shippedBytes = 21 + 8 + 32 + 40 = 101                     value = 0.0792
 | 13.5 low-S form, sign, verify | `crypto-core.js` 168-224; `seal-crypto.js` 123-130 |
 | 13.7 tokens | BioChain-AI `src/identity/epoch-service.js` 23-30; Owl `scripts/schumann-oracle.js` 21-29 |
 
-## Appendix D. Source map (strict verifier, Owl-Academy `scripts/biomesh-core.js` at O3's commit)
+## Appendix D. Source map (strict verifier, Owl-Academy `scripts/biomesh-core.js` at the pinned commit)
 
-At `f1d31afd48f8424348972b4d68abf8e23830a539` (file SHA-256 `0c7e9b3e…`), O3's commit. The pin follows O3's published
-commit and then its merge commit. The file's hash may change with the pin, but the verdicts at the new pin must
-reproduce every locked case of `shdccp2_tamper` (a changed verdict changes a locked case, which rule 2 of section 15
-refuses), and these line numbers are checked again.
+At `cf1227a6912394ca6424d931ef0330c6be97a915` (file SHA-256 `4475fe7a…`, 780 lines), the strict verifier in the order
+of section 17's option (a); it follows O3's commit `f1d31afd48f8424348972b4d68abf8e23830a539` (file SHA-256
+`0c7e9b3e…`). The pin follows the verifier's published commit and then its merge commit. The file's hash may change
+with the pin, but the verdicts at the new pin must reproduce every locked case of `shdccp2_tamper` and
+`shdccp2_tamper_open` (a changed verdict changes a locked case, which rule 2 of section 15 refuses), and these line
+numbers are checked again.
 
 | Section | Lines |
 | :--- | :--- |
-| 4.3 strict parse (`parseBiochainStreamStrict`) | 271-289 |
-| 2.2 H in plain JS (`sha256HexSync`); leaves, root and weaves (`leafHashSync`, `merkleRootSync`, `chainWeaves`) | 467-516 |
-| 12.3 the checks in order (`STRICT_CHECKS`, `verifyIntegrityStrict`) | 518-644 |
-| 12.4 the verdict's failing check and label (`failedCheck`, `strictLabel`) | 646-657 |
-| 11.3 the kind registry (`KINDS`, `validateKind`) | 757-770 |
+| 4.3 strict parse (`parseBiochainStreamStrict`; hex digits of either case, section 12.3) | 274-292 |
+| 2.2 H in plain JS (`sha256HexSync`); leaves, root and weaves (`leafHashSync`, `merkleRootSync`, `chainWeaves`) | 476-525 |
+| 12.3 the checks in order (`STRICT_CHECKS`, `verifyIntegrityStrict`) | 527-654 |
+| 12.4 the verdict's failing check and label (`failedCheck`, `strictLabel`) | 656-667 |
+| 11.3 the kind registry (`KINDS`, `validateKind`) | 767-780 |
 
 ## Appendix E. CODEX/1: one tag, two meanings (informative, D20)
 

@@ -2,7 +2,7 @@
 // Part of contract_vectors/ (CC0-1.0, see ../LICENSE). Written for SHD-CCP-core; contains no code from Owl-Academy.
 //
 // Loads Owl-Academy's scripts/biomesh.js and scripts/seal-crypto.js (MIT, (c) Ebayednoob) READ-ONLY, by name-grab
-// (loadOwl), and scripts/biomesh-core.js at O3's commit with its one import bound (loadOwlCore):
+// (loadOwl), and scripts/biomesh-core.js at the strict verifier's commit with its one import bound (loadOwlCore):
 //   - each file is read from the Owl-Academy git object store at the pinned commit (`git show <commit>:<path>`),
 //     so the checkout's working tree is never read, written or switched;
 //   - its SHA-256 must equal the pinned value, or loading stops;
@@ -73,16 +73,18 @@ function rewriteImports(text) {
   return out;
 }
 
-// Owl-Academy's scripts/biomesh-core.js at O3's commit: the strict verifier (verifyIntegrityStrict, RFC 07 section 12.3)
-// whose verdicts are the expected values of shdccp2_tamper. The file's codec functions are biomesh.js's at OWL_PIN,
-// moved unchanged; it imports only sha256Hex from ./seal-crypto.js (the same file as at OWL_PIN). The pin follows O3's
-// published commit; the file's hash may change with it, but its verdicts must reproduce every locked case.
+// Owl-Academy's scripts/biomesh-core.js at the strict verifier's commit: verifyIntegrityStrict (RFC 07 section 12.3, in
+// the order of section 17's option (a)), whose verdicts are the expected values of shdccp2_tamper and
+// shdccp2_tamper_open. The file's codec functions are biomesh.js's at OWL_PIN, moved unchanged; it imports only
+// sha256Hex from ./seal-crypto.js (the same file as at OWL_PIN). The pin follows the verifier's published commit (O3's
+// f1d31af, then cf1227a for option (a)); the file's hash may change with it, but its verdicts must reproduce every
+// locked case.
 export const OWL_STRICT_PIN = Object.freeze({
   repository: 'BioChainAI/Owl-Academy',
-  commit: 'f1d31afd48f8424348972b4d68abf8e23830a539',
+  commit: 'cf1227a6912394ca6424d931ef0330c6be97a915',
   license: 'MIT',
   files: Object.freeze({
-    'scripts/biomesh-core.js': '0c7e9b3e7f67e821047537a1be76ec18e96af65bf73864a589597fd458578a69',
+    'scripts/biomesh-core.js': '4475fe7a361df616315b1e7b6369501e39c341d477c322c247aa8da946272263',
     'scripts/seal-crypto.js': 'ba0a41ae28542d3c38745d817fc9580d34ee9b13ccc36b67e6c2fd4fd300c0e1',
   }),
 });

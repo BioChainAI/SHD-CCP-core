@@ -168,18 +168,21 @@ def frame(pkt, residual):
 
 
 _FRAME = re.compile(r'([0-9A-F]{16})([0-9a-f]{8})')
+_FRAME_EITHER_CASE = re.compile(r'([0-9A-Fa-f]{16})([0-9A-Fa-f]{8})')
 
 
-def parse_stream_strict(stream):
-    """4.3: canonical case, exact lengths, no trailing characters, at least one frame."""
+def parse_stream_strict(stream, either_case=False):
+    """4.3: canonical case, exact lengths, no trailing characters, at least one frame. With either_case, hex digits
+    of either case (12.3, parity): the case is then left to the later checks."""
     frames, p = [], 0
+    header, digits = (_FRAME_EITHER_CASE, r'[0-9A-Fa-f]*') if either_case else (_FRAME, r'[0-9a-f]*')
     while p < len(stream):
-        m = _FRAME.match(stream, p)
+        m = header.match(stream, p)
         if not m:
             raise ValueError('frame header at %d is not canonical' % p)
         n = int(m.group(2), 16)
         res = stream[m.end():m.end() + 2 * n]
-        if len(res) != 2 * n or not re.fullmatch(r'[0-9a-f]*', res):
+        if len(res) != 2 * n or not re.fullmatch(digits, res):
             raise ValueError('residual at %d is short or not canonical' % m.end())
         frames.append((m.group(1), res))
         p = m.end() + 2 * n
@@ -434,14 +437,15 @@ def strict_verdict(rec):
     def fail(name):
         return {'ok': False, 'failed': name, 'legacy': False}
 
-    # 1. parity: the strict parse (4.3, items 1-3) and every packet's parity (5.5)
+    # 1. parity: the strict parse (4.3, items 1-3) with hex digits of either case, and every packet's parity (5.5)
     try:
-        frames = parse_stream_strict(rec['stream'])
+        frames = parse_stream_strict(rec['stream'], either_case=True)
     except ValueError:
         return fail('parity')
     if not all(unpack(p)['parity_ok'] for p, _ in frames):
         return fail('parity')
-    # 2. canonical: the 720-byte cut, at most 60,000 bytes, canonical residuals, the framing, well-formed UTF-8
+    # 2. canonical: the 720-byte cut, at most 60,000 bytes, canonical residuals (their text is the lower-case
+    # encoding), the framing (lengths written in lower case, packets as read)
     lens, k = [unpack(p)['payload16'] for p, _ in frames], len(frames)
     if any(n != CHUNK for n in lens[:-1]) or not 1 <= lens[-1] <= CHUNK or sum(lens) > MAX_BYTES:
         return fail('canonical')
@@ -457,11 +461,7 @@ def strict_verdict(rec):
     if ''.join(frame(p, r) for p, r in frames) != rec['stream']:
         return fail('canonical')
     data = b''.join(chunks)
-    try:
-        text = data.decode('utf-8')          # 12.1 step 2: strict, a leading U+FEFF kept
-    except UnicodeDecodeError:
-        return fail('canonical')
-    # 3. crystal: every packet is crystallize(chunk) under the raw rule (5.4)
+    # 3. crystal: every packet is crystallize(chunk) under the raw rule (5.4), compared as upper-case text
     if any(packet(c) != p for c, (p, _) in zip(chunks, frames)):
         return fail('crystal')
     # 4. leaves: exactly K entries, each the leaf; merkleRoot present and the root of the leaves
@@ -477,7 +477,12 @@ def strict_verdict(rec):
             or len(segs) != len(cuts) or not all(_num_eq(a, b) for a, b in zip(segs, cuts)) \
             or not _num_eq(rec.get('segments'), SEGMENTS) or rec.get('chainId') != 'BC-' + H(root + '|' + wc)[:24]:
         return fail('weaves')
-    # 6. derived: the engram fields when any is present (9.5), origBytes, shippedBytes and value (10)
+    # 6. derived: the bytes are well-formed UTF-8 (12.1 step 2), then the engram fields when any is present (9.5),
+    # origBytes, shippedBytes and value (10)
+    try:
+        text = data.decode('utf-8')          # 12.1 step 2: strict, a leading U+FEFF kept
+    except UnicodeDecodeError:
+        return fail('derived')
     eng_len = 0
     if any(f in rec for f in ENGRAM_FIELDS):
         e = engram_layer(text)

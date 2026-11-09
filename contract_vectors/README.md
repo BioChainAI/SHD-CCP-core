@@ -16,9 +16,10 @@ fails if a file is stale, missing or unknown.
    (the reference implementation, MIT) at `7f45f356f5c46ea0eb099905b2505a06e8c28fd7` for the codec suites;
    BioChain-AI's `src/identity/crypto-core.js` and `epoch-service.js` (MIT) at
    `dfbe3f2e94c2ff8101f39054bedf29ec67f75704` and Owl's `seal-crypto.js` and `schumann-oracle.js` for
-   `attest1_profile`; Owl's strict verifier (`verifyIntegrityStrict` in `scripts/biomesh-core.js`, O3) at
-   `f1d31afd48f8424348972b4d68abf8e23830a539` for the tamper suites (the pin follows O3's published commit; the file's
-   hash may change with it, but its verdicts must reproduce every locked case); and its own [`tools/cv_spec.mjs`](tools/cv_spec.mjs),
+   `attest1_profile`; Owl's strict verifier (`verifyIntegrityStrict` in `scripts/biomesh-core.js`, O3, in the order
+   of RFC 07 section 17's option (a)) at `cf1227a6912394ca6424d931ef0330c6be97a915` for the tamper suites (the pin
+   follows the verifier's published commit; the file's hash may change with it, but its verdicts must reproduce every
+   locked case); and its own [`tools/cv_spec.mjs`](tools/cv_spec.mjs),
    written from the specifications it cites, for what neither computes (RFC 6962, BIOSEED/1, RFC 6979 signatures and DER, the coder's code lengths, the
    snapshot text). An implementation independent of that code must reproduce every expected value of a suite before
    the suite is locked: the Hyperbolic Lexicon's `chain.py`, `manifest.py` and `attest.py` (with Python's
@@ -52,7 +53,7 @@ fails if a file is stale, missing or unknown.
 | `schema.json` | JSON Schema (draft 2020-12) of a suite file: SHD-CCP's envelope (suite, spec_version, rfc, status, description, generator, cases) with `binary` optional, plus `wire`, `source` and `license`, and a case schema per suite |
 | `suites/*.json` | the vectors, one file per suite |
 | `lock.json` | implementations and the normative lock |
-| `tools/owl_namegrab.mjs` | loads Owl's `biomesh.js` and `seal-crypto.js` read-only from an Owl-Academy clone's git objects at the pinned commit, checks their SHA-256, and exposes their functions; loads `biomesh-core.js` (the strict verifier) the same way at O3's commit |
+| `tools/owl_namegrab.mjs` | loads Owl's `biomesh.js` and `seal-crypto.js` read-only from an Owl-Academy clone's git objects at the pinned commit, checks their SHA-256, and exposes their functions; loads `biomesh-core.js` (the strict verifier) the same way at its own pinned commit |
 | `tools/pinned_sources.mjs` | loads import-free modules the same way: BioChain-AI's `crypto-core.js` and `epoch-service.js`, Owl's `schumann-oracle.js` |
 | `tools/cv_spec.mjs` | the generator's own code, written from the specifications it cites: RFC 6962 trees, proofs and verification, BIOSEED/1, ECDSA P-256 with RFC 6979 nonces and DER, the rank coder's code lengths, the snapshot text |
 | `tools/generate.mjs` | the single generator (`--write`) and drift check (`--check`) |
@@ -62,12 +63,13 @@ fails if a file is stale, missing or unknown.
 
 ## Suites
 
-Fourteen are **normative**. The first seven: Owl's JS and the Lexicon oracle agreed on all 207 cases (2026-11-07,
+Fifteen are **normative**. The first seven: Owl's JS and the Lexicon oracle agreed on all 207 cases (2026-11-07,
 numpy 2.5.3). The next six: the generator's sources and the independent oracle agreed on all 276 cases (2026-11-08,
 numpy 2.5.3, cryptography 50.0.1 with OpenSSL 4.0.2). `shdccp2_tamper`: Owl's strict verifier and the Lexicon's
-`verify.py` agreed on all 79 cases (2026-11-08). Two suites are **draft**, and `check.py` lists the oracle's
-disagreements with them as `OPEN`: `shdccp2_tamper_open`, ten values on which the Lexicon's verifier names another
-first failing check than RFC 07 (section 12.5), and `attest1_profile_open`, three seeds on which ECMAScript's `trim`
+`verify.py` agreed on all 79 cases (2026-11-08). `shdccp2_tamper_open`: Owl's strict verifier at `cf1227a` and
+`verify.py` agreed on all 13 cases (2026-11-09), once RFC 07 placed the hex-case and UTF-8 rules in the Lexicon's
+order (section 17, option (a)); the suite was draft before and keeps its name. One suite is **draft**, and `check.py`
+lists the oracle's disagreements with it as `OPEN`: `attest1_profile_open`, three seeds on which ECMAScript's `trim`
 (RFC 07 section 13.1) and the oracle's Python `str.strip` differ.
 
 | Suite | Cases | RFC 07 | Pins |
@@ -86,7 +88,7 @@ first failing check than RFC 07 (section 12.5), and `attest1_profile_open`, thre
 | `engram1_keys` | 34 | §9.6 | the engram key of a string outside a record (F114): letters after full Unicode upper-casing ("ß" → "SS", ligatures, dotless i) and the canonical upper-case key; GEODESIC → `5C896A4801C9C24C`. |
 | `rng_mulberry32` | 35 | §9.2 | mulberry32 (P6): 64 draws for each engram/1 letter seed 65..90 and 16 draws for edge seeds (int32 wrap-around, the increment). |
 | `shdccp2_tamper` | 79 | §12.3-§12.5 | the strict verdict (ok and the first failing check) for five honest records and 74 altered ones: T1, T2, T8, T9, legacy records, values that are not records, the strict stream form, the 720-byte cut (a 719-byte middle frame), 60,001 bytes, non-canonical residuals, packet fields, leaves and root, the weaves, segCuts, segments, chainId and the derived fields. `informative` gives Owl's `legacy` flag, its detail, the self-consistency verdict and the label. |
-| `shdccp2_tamper_open` (draft) | 10 | §12.5 | hex digits in the wrong case and ill-formed UTF-8: RFC 07 reports them at parity and canonical, the Lexicon's verifier at crystal or canonical and at derived. |
+| `shdccp2_tamper_open` | 13 | §12.3-§12.5 | hex digits in the wrong case and ill-formed UTF-8, at the first failing check of RFC 07's order (section 17, option (a)): a packet with a lower-case hex digit fails at crystal; a residual or a residual length with an upper-case digit at canonical; ill-formed UTF-8 at derived when every other field comes from the same bytes, and at crystal, leaves or weaves when the change also leaves the packet, the leaves or the weaves wrong. `informative` as in `shdccp2_tamper`. |
 | `attest1_profile_open` (draft) | 3 | §13.1 | identities whose seed starts with U+FEFF (removed by ECMAScript's `trim`, kept by Python's `str.strip`), U+0085 or U+001C (kept by `trim`, removed by `str.strip`); the expected values are BioChain-AI's `computeIdentityId`. |
 
 ## Encodings
@@ -109,7 +111,7 @@ first failing check than RFC 07 (section 12.5), and `attest1_profile_open`, thre
 ## Running
 
 From the repository root, with Node 20 or later, an Owl-Academy clone that holds the pinned commits (the generator's,
-and O3's for the strict verifier; `--owl-strict DIR` names another clone for the latter) and a BioChain-AI clone that
+and the strict verifier's; `--owl-strict DIR` names another clone for the latter) and a BioChain-AI clone that
 holds its pinned commit (only their git object stores are read; their working trees are never touched):
 
 ```sh

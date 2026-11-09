@@ -1,5 +1,5 @@
 {
-  "about": "The normative lock of the RFC 07 contract vectors (D8). A suite is normative only when the implementations the generator runs for it (its source: Owl's biomesh.js, Owl's strict verifier in biomesh-core.js, BioChain-AI's crypto-core.js, Owl's seal-crypto.js or the generator's own cv_spec.mjs) and an implementation independent of them agreed on every case. Each locked case is pinned by the SHA-256 of the canonical JSON of its id, input and expect (tools/check.py case_hash: Python json.dumps with sort_keys=True, separators (',', ':') and ensure_ascii=False, encoded as UTF-8), so neither the input nor the expected value of a locked case can change. Locked entries never change or disappear: a change needs a new wire version and a new suite. Entries are added only by tools/check.py --promote, which locks only cases the oracle reproduced in that run; CI also requires the oracle to reproduce, in the same run, every entry added relative to the base commit. Informative values are outside the lock: a value no implementation independent of the generator's source computes is informative, for example the GROWN/1 commitment of shdccp2_record, the section 4.4 bound in shdccp2_limits, the sealId of a SEAL/1 case in attest1_profile and the legacy flag in the tamper suites. A draft suite (for example shdccp2_tamper_open and attest1_profile_open) has no entry here until the oracle agrees with every case. CC0-1.0, see LICENSE.",
+  "about": "The normative lock of the RFC 07 contract vectors (D8). A suite is normative only when the implementations the generator runs for it (its source: Owl's biomesh.js, Owl's strict verifier in biomesh-core.js, BioChain-AI's crypto-core.js, Owl's seal-crypto.js or the generator's own cv_spec.mjs) and an implementation independent of them agreed on every case. Each locked case is pinned by the SHA-256 of the canonical JSON of its id, input and expect (tools/check.py case_hash: Python json.dumps with sort_keys=True, separators (',', ':') and ensure_ascii=False, encoded as UTF-8), so neither the input nor the expected value of a locked case can change. Locked entries never change or disappear: a change needs a new wire version and a new suite. Entries are added only by tools/check.py --promote, which locks only cases the oracle reproduced in that run; CI also requires the oracle to reproduce, in the same run, every entry added relative to the base commit. Informative values are outside the lock: a value no implementation independent of the generator's source computes is informative, for example the GROWN/1 commitment of shdccp2_record, the section 4.4 bound in shdccp2_limits, the sealId of a SEAL/1 case in attest1_profile and the legacy flag in the tamper suites. A draft suite (for example attest1_profile_open) has no entry here until the oracle agrees with every case. CC0-1.0, see LICENSE.",
   "implementations": {
     "owl-biomesh-js": {
       "role": "reference implementation (D5); the generator runs it read-only by name-grab",
@@ -14,13 +14,13 @@
       "independent_of_generator": false
     },
     "owl-biomesh-core-strict-js": {
-      "role": "Owl-Academy's strict verifier (verifyIntegrityStrict in scripts/biomesh-core.js, O3), whose verdicts (ok and the first failing check) are the expected values of shdccp2_tamper and shdccp2_tamper_open; the generator loads it read-only from git objects, its one import (sha256Hex from seal-crypto.js) bound to seal-crypto.js of the same commit. The commit is O3's; the pin follows O3's published commit, then its merge commit. The file's hash may change with the pin, but the verdicts at the new pin must reproduce every locked case (a changed verdict changes a locked case and fails rule 2)",
+      "role": "Owl-Academy's strict verifier (verifyIntegrityStrict in scripts/biomesh-core.js, O3), whose verdicts (ok and the first failing check) are the expected values of shdccp2_tamper and shdccp2_tamper_open; the generator loads it read-only from git objects, its one import (sha256Hex from seal-crypto.js) bound to seal-crypto.js of the same commit. The commit is the verifier in the order of RFC 07 section 17's option (a) (cf1227a, which follows O3's f1d31af); the pin follows the verifier's published commit, then its merge commit. The file's hash may change with the pin, but the verdicts at the new pin must reproduce every locked case (a changed verdict changes a locked case and fails rule 2)",
       "repository": "BioChainAI/Owl-Academy",
-      "commit": "f1d31afd48f8424348972b4d68abf8e23830a539",
+      "commit": "cf1227a6912394ca6424d931ef0330c6be97a915",
       "license": "MIT",
       "engine": "V8",
       "files": {
-        "scripts/biomesh-core.js": "0c7e9b3e7f67e821047537a1be76ec18e96af65bf73864a589597fd458578a69",
+        "scripts/biomesh-core.js": "4475fe7a361df616315b1e7b6369501e39c341d477c322c247aa8da946272263",
         "scripts/seal-crypto.js": "ba0a41ae28542d3c38745d817fc9580d34ee9b13ccc36b67e6c2fd4fd300c0e1"
       },
       "independent_of_generator": false
@@ -785,6 +785,27 @@
         "shippedbytes_minus_one": "02f66ec5c7d8f858ab50faa24e53c59d9cae859a74a5a98976fd658cec4b540f",
         "value_changed": "266e59626bcbef71ca84ec7ae007a5dd171125f6d4d3471b90e0b0f9a19b195e",
         "value_string": "d73b0bdd861806dde688a46e01cb6467df5deafde99a12cbe690358a1adc655b"
+      }
+    },
+    "shdccp2_tamper_open": {
+      "agreed_by": [
+        "owl-biomesh-core-strict-js",
+        "lexicon-verify-py"
+      ],
+      "cases": {
+        "packet_lower_case": "0ee82a023d3c221258d89cc9d454156cf13e8d0c09bdf9142e5205adb2bc62bc",
+        "packet_mixed_case": "cd0df1c60c1b73ef3904bab7c4bdcbe07244f99b6101e141fde7c32c005424f4",
+        "residual_upper_case": "e11e5549097d8ee1c9cddadb33adf607d9c8facf680b5a3b41bde4306e34b670",
+        "residual_mixed_case": "b9c6b4135a3a349fc0af52a3abbfc3834b5264ebb09921f68c0710509a691536",
+        "length_upper_case": "29726b1759092985c3467fb5a6c2e631da3c2fd61ec6eec7182d0347fb151185",
+        "utf8_lead_byte_at_end": "927efe11ff624313a99c766cac557c12072a4fd5e4327d914a2ada640b8d5c25",
+        "utf8_overlong": "02ea75d4a953ae8e71641bde69c94065716f8b320b2f1f7095679390e1a00fb6",
+        "utf8_encoded_surrogate": "428c5ee16222b9b441ac0b97f031508608a778e477343f76cbeb9732058a8306",
+        "utf8_lone_continuation": "eaa7e70613fc356b1a7912b37fcac4537833a2ed3920f9001cc96bd689b40c04",
+        "utf8_invalid_across_cut": "ac67f102cbfd39f6839558ad781d7ca3633335d2665324663730456e6f2ad153",
+        "utf8_residual_changed": "cf30cf909e68227efc3f1d5355e8108ae3de5d6f51ada7a1336fb2f7ed13f8bb",
+        "utf8_packet_and_residual_changed": "326cd6265e633934660b030079307e9cdaad6c7a63048a855e9b1930382765f0",
+        "utf8_leaves_and_root_changed": "0e576870eae70dabc53432c386a872402e94f135709a0518f0c3da82d170d08a"
       }
     }
   }
