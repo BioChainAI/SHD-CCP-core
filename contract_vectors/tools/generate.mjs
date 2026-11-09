@@ -7,7 +7,7 @@
 // Every expected value comes from the code each suite's `source` names, loaded read-only from git objects at a pinned
 // commit, and from the V8 built-ins that code calls (Math.hypot, Number.prototype.toFixed, String.prototype.toUpperCase):
 //   - Owl-Academy's scripts/biomesh.js (the reference implementation, D5), by owl_namegrab.mjs, for the codec suites;
-//   - Owl-Academy's scripts/biomesh-core.js at O3's commit (verifyIntegrityStrict, the strict verifier), by
+//   - Owl-Academy's scripts/biomesh-core.js at the strict verifier's commit (verifyIntegrityStrict), by
 //     owl_namegrab.mjs, for the verdicts of shdccp2_tamper and shdccp2_tamper_open;
 //   - BioChain-AI's src/identity/crypto-core.js and epoch-service.js (the owner of ATTEST/1, D5) and Owl's
 //     seal-crypto.js and schumann-oracle.js (SEAL/1), by pinned_sources.mjs, for attest1_profile and the draft
@@ -27,8 +27,8 @@
 //                                                     fail on a stale, missing or unknown file in suites/, or an
 //                                                     unknown top-level entry
 // --owl DIR defaults to $OWL_ACADEMY_DIR, then ../Owl-Academy beside this repository; --owl-strict DIR (a clone holding
-// O3's commit) to $OWL_ACADEMY_STRICT_DIR, then the --owl clone; --biochain DIR to $BIOCHAIN_AI_DIR, then
-// ../BioChain-AI. Only their git object stores are read (git show <pinned commit>:<path>);
+// the strict verifier's commit) to $OWL_ACADEMY_STRICT_DIR, then the --owl clone; --biochain DIR to $BIOCHAIN_AI_DIR,
+// then ../BioChain-AI. Only their git object stores are read (git show <pinned commit>:<path>);
 // their working trees are never touched.
 
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync } from 'node:fs';
@@ -970,11 +970,14 @@ function rngSuite() {
 // informative: the independent verifier has no notion of legacy (section 12.5). This file only
 // builds the inputs (with Owl's own codec functions) and states, per case, the check the alteration is meant to
 // reach; generation stops when Owl's verdict names another check, so a surprise is never written silently.
-// Cases on which the independent oracle (the Lexicon's verifyPackage steps 1-6, verify.py) names another first
-// failing check are listed in OPEN_TAMPER and written to the draft suite shdccp2_tamper_open instead (section 12.5).
+// Hex digits in the wrong case and ill-formed UTF-8 are listed in OPEN_TAMPER and written to their own suite,
+// shdccp2_tamper_open (section 12.5). Their first failing check follows section 17's option (a), the order of the
+// independent oracle (the Lexicon's verifyPackage steps 1-6, verify.py); the suite was draft until that order was
+// settled, and shdccp2_tamper's locked cases are unchanged by it.
 const OPEN_TAMPER = new Set([
   'packet_lower_case', 'packet_mixed_case', 'residual_upper_case', 'residual_mixed_case', 'length_upper_case',
   'utf8_lead_byte_at_end', 'utf8_overlong', 'utf8_encoded_surrogate', 'utf8_lone_continuation', 'utf8_invalid_across_cut',
+  'utf8_residual_changed', 'utf8_packet_and_residual_changed', 'utf8_leaves_and_root_changed',
 ]);
 const STRICT_SOURCE = pinSource(OWL_STRICT_PIN);
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
@@ -1121,7 +1124,7 @@ async function tamperSuites() {
     await add('crystal_bit_parity_not_fixed', 'a crystal bit of packet 0 flipped, parity not set again (T2 without its parity fix)', with3(f), 'parity', B);
   }
 
-  // ---- canonical: the 720-byte cut, the 60,000-byte limit, canonical residuals, well-formed UTF-8
+  // ---- canonical: the 720-byte cut, the 60,000-byte limit, canonical residuals
   {
     const d = B3.chunks.flat();
     await add('cut_719_middle', 'the same 1,441 bytes framed as 720, 719 and 2 bytes: a 719-byte middle frame',
@@ -1217,22 +1220,24 @@ async function tamperSuites() {
   await add('value_changed', 'value plus 0.0001', { ...r3(), value: B3.rec.value + 0.0001 }, 'derived', B);
   await add('value_string', 'value as a string', { ...r3(), value: String(B3.rec.value) }, 'derived', B);
 
-  // ---- open: hex case (section 4.3) and ill-formed UTF-8 (section 12.1, step 2)
+  // ---- shdccp2_tamper_open: hex case (section 4.3) and ill-formed UTF-8 (section 12.1, step 2), in the order of
+  // section 17's option (a): hex digits of either case pass parity, and the case fails at canonical (residuals and
+  // their lengths) or crystal (packets); the UTF-8 check is the first step of derived
   {
     const f = fr3(); f[0].packet = f[0].packet.toLowerCase();
     if (f[0].packet === B3.frames[0].packet) throw new Error('packet 0 has no letter');
-    await add('packet_lower_case', 'packet 0 in lower-case hex', withRaw3(f), 'parity', B);
+    await add('packet_lower_case', 'packet 0 in lower-case hex', withRaw3(f), 'crystal', B);
   }
   const letterAt = (s, re) => { const i = s.search(re); if (i < 0) throw new Error('no letter to change case'); return i; };
-  { const f = fr3(); const i = letterAt(f[1].packet, /[A-F]/); f[1].packet = f[1].packet.slice(0, i) + f[1].packet[i].toLowerCase() + f[1].packet.slice(i + 1); await add('packet_mixed_case', 'one letter of packet 1 in lower case', withRaw3(f), 'parity', B); }
-  { const f = fr3(); letterAt(f[0].residual, /[a-f]/); f[0].residual = f[0].residual.toUpperCase(); await add('residual_upper_case', 'residual 0 in upper-case hex', withRaw3(f), 'parity', B); }
-  { const f = fr3(); const i = letterAt(f[1].residual, /[a-f]/); f[1].residual = f[1].residual.slice(0, i) + f[1].residual[i].toUpperCase() + f[1].residual.slice(i + 1); await add('residual_mixed_case', 'one letter of residual 1 in upper case', withRaw3(f), 'parity', B); }
+  { const f = fr3(); const i = letterAt(f[1].packet, /[A-F]/); f[1].packet = f[1].packet.slice(0, i) + f[1].packet[i].toLowerCase() + f[1].packet.slice(i + 1); await add('packet_mixed_case', 'one letter of packet 1 in lower case', withRaw3(f), 'crystal', B); }
+  { const f = fr3(); letterAt(f[0].residual, /[a-f]/); f[0].residual = f[0].residual.toUpperCase(); await add('residual_upper_case', 'residual 0 in upper-case hex', withRaw3(f), 'canonical', B); }
+  { const f = fr3(); const i = letterAt(f[1].residual, /[a-f]/); f[1].residual = f[1].residual.slice(0, i) + f[1].residual[i].toUpperCase() + f[1].residual.slice(i + 1); await add('residual_mixed_case', 'one letter of residual 1 in upper case', withRaw3(f), 'canonical', B); }
   {
     const bid = Object.keys(base).find((id) => base[id].frames.some((x) => /[a-f]/.test(lenHexOf(x.residual))));
     if (!bid) throw new Error('no residual length with a letter');
     const f = clone(base[bid].frames), j = f.findIndex((x) => /[a-f]/.test(lenHexOf(x.residual)));
     f[j].lenHex = lenHexOf(f[j].residual).toUpperCase();
-    await add('length_upper_case', `residual length ${j} in upper-case hex`, { ...clone(base[bid].rec), stream: rawStream(f) }, 'parity', { base: bid });
+    await add('length_upper_case', `residual length ${j} in upper-case hex`, { ...clone(base[bid].rec), stream: rawStream(f) }, 'canonical', { base: bid });
   }
   const bad = (pre, mid, post) => [...enc.encode(pre), ...mid, ...enc.encode(post)];
   for (const [id, note, d] of [
@@ -1242,27 +1247,48 @@ async function tamperSuites() {
     ['utf8_lone_continuation', 'a continuation byte 0x80 at the start', bad('', [0x80], ' start')],
     ['utf8_invalid_across_cut', 'byte 719 is 0xC3 and byte 720, the first of chunk 1, is "a": invalid across the cut', bad(ASCII_UNIT.repeat(14).slice(0, 719), [0xc3], 'a tail')],
   ]) {
-    await add(id, `${note}; every other field is computed from these bytes (engrams off)`, recordOfBytes(d), 'canonical');
+    await add(id, `${note}; every other field is computed from these bytes (engrams off)`, recordOfBytes(d), 'derived');
+  }
+  {
+    // ill-formed UTF-8 whose change also leaves an earlier check wrong: the record of "a" (shdccp2_record/one_byte,
+    // engrams on) with fields replaced by those of the single byte 0xE9, one step further in each case
+    const t = recordText('one_byte'), rec = await grow(t.text, t.engrams), f = framesOf(rec.stream), e9 = [0xe9];
+    if (t.text !== 'a' || !t.engrams || f.length !== 1 || rec.engramStream === undefined) throw new Error('shdccp2_record/one_byte is not "a" with engrams');
+    const O = { base: 'one_byte' };
+    const r1 = { ...clone(rec), stream: streamOf([{ packet: f[0].packet, residual: BM.encodeChunk(e9) }]) };
+    await add('utf8_residual_changed', 'the residual replaced by the canonical residual of the byte 0xE9 (ill-formed UTF-8); the packet and every other field are those of "a"', r1, 'crystal', O);
+    const r2 = { ...clone(rec), stream: streamOf([frameOf(e9)]) };
+    await add('utf8_packet_and_residual_changed', 'as utf8_residual_changed, and the packet is crystallize([0xE9]); the leaves, root, weaves and derived fields are those of "a"', r2, 'leaves', O);
+    const leafHashes = [CORE.leafHashSync(0, e9)];
+    const r3x = { ...clone(r2), leafHashes, merkleRoot: CORE.merkleRootSync(leafHashes) };
+    await add('utf8_leaves_and_root_changed', 'as utf8_packet_and_residual_changed, and leafHashes and merkleRoot are computed for [0xE9]; the weaves, chainId and derived fields are those of "a"', r3x, 'weaves', O);
   }
 
   const open = cases.filter((c) => OPEN_TAMPER.has(c.id));
   if (open.length !== OPEN_TAMPER.size) throw new Error('an open tamper case is missing');
-  const common = 'Owl\'s strict verdict (verifyIntegrityStrict, scripts/biomesh-core.js at the pinned O3 commit) for a value given '
+  // The two descriptions share the verdict, informative and oracle sentences; each states what its own values are.
+  const verdict = 'Owl\'s strict verdict (verifyIntegrityStrict, scripts/biomesh-core.js at the pinned commit) for a value given '
     + 'to a strict verifier (RFC 07 sections 12.3 and 12.4): ok and the first failing check (parity, canonical, crystal, '
-    + 'leaves, weaves, derived). Values are honest shdccp2_record records altered in one way (informative.base), records '
-    + 'assembled from other chunks or bytes with Owl\'s codec functions, and values that are not records. informative '
+    + 'leaves, weaves, derived).';
+  const informative = ' informative '
     + 'gives Owl\'s legacy flag (informative because the independent verifier has no notion of legacy), Owl\'s detail, '
     + 'the self-consistency check of section 12.2 (Owl\'s verifyIntegrity at the generator\'s pin) and the label of '
     + 'section 12.4.';
+  const oracle = ' The independent verifier (the Lexicon\'s verifyPackage, steps 1-6) gives the same verdict on every case.';
   return [{
     suite: 'shdccp2_tamper',
-    description: common + ' The independent verifier (the Lexicon\'s verifyPackage, steps 1-6) gives the same verdict on every case.',
+    description: verdict + ' Values are honest shdccp2_record records altered in one way (informative.base), records '
+      + 'assembled from other chunks or bytes with Owl\'s codec functions, and values that are not records.' + informative + oracle,
     source: [OWL_SOURCE, STRICT_SOURCE],
     cases: cases.filter((c) => !OPEN_TAMPER.has(c.id)),
   }, {
     suite: 'shdccp2_tamper_open',
-    description: common + ' Draft: the independent verifier gives another verdict on these cases (RFC 07 section 12.5 lists them); '
-      + 'the expected values are RFC 07\'s.',
+    description: verdict + ' Values are hex digits in the wrong case and ill-formed UTF-8 (RFC 07 section 12.5): honest '
+      + 'shdccp2_record records with a packet, a residual or a residual length written in the wrong case (informative.base); '
+      + 'records whose fields are all computed with Owl\'s codec functions from bytes that are not well-formed UTF-8; and the '
+      + 'record of shdccp2_record/one_byte (informative.base) with its residual replaced by that of the byte 0xE9, then its '
+      + 'packet as well, then its leafHashes and merkleRoot as well.' + informative + ' Their first failing check follows '
+      + 'section 17\'s option (a), the order of the Lexicon\'s verifyPackage.' + oracle,
     source: [OWL_SOURCE, STRICT_SOURCE],
     cases: open,
   }];

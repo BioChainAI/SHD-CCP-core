@@ -473,7 +473,7 @@
       }
     },
     "case_tamper": {
-      "description": "A value given to a strict verifier (RFC 07 sections 12.3 and 12.4) and its verdict: ok and the first failing check. input.record is any JSON value: a record, an altered record, or a value that is not a record. The verdict's legacy flag is informative (RFC 07 section 12.5).",
+      "description": "A value given to a strict verifier (RFC 07 sections 12.3 and 12.4) and its verdict: ok and the first failing check. input.record is any JSON value: a record, an altered record, or a value that is not a record. The verdict's legacy flag is informative (RFC 07 section 12.5). Both tamper suites are normative: shdccp2_tamper, and shdccp2_tamper_open (hex digits in the wrong case and ill-formed UTF-8, at the first failing check of RFC 07 section 17's option (a); draft until that order was settled).",
       "type": "object", "required": ["id", "note", "input", "expect"], "additionalProperties": false,
       "properties": {
         "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
