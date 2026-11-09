@@ -4,11 +4,12 @@
 """Checks the RFC 07 contract vectors without running their generator (standard library only).
 
     python3 -B contract_vectors/tools/check.py                         schema, D8 rules, RFC-reading agreement
-    python3 -B contract_vectors/tools/check.py --base origin/main --lexicon-root DIR
+    python3 -B contract_vectors/tools/check.py --base origin/main --lexicon-root DIR --biochain-root DIR
                                                                        ... and no locked case changed since that ref,
                                                                        and the oracle reproduces every entry added since
-    python3 -B contract_vectors/tools/check.py --lexicon-root DIR      ... and agreement with the Lexicon oracle
-    python3 -B contract_vectors/tools/check.py --lexicon-root DIR --promote
+    python3 -B contract_vectors/tools/check.py --lexicon-root DIR --biochain-root DIR
+                                                                       ... and agreement with the independent oracle
+    python3 -B contract_vectors/tools/check.py --lexicon-root DIR --biochain-root DIR --promote
                                                                        lock every draft suite the oracle fully agrees
                                                                        with, and every new case of a normative suite the
                                                                        oracle agrees with; existing entries never change
@@ -16,27 +17,35 @@
 What it checks:
   1. schema: every suites/*.json validates against schema.json (a dependency-free validator for the subset the schema
      uses; if the `jsonschema` package is installed it is used as well).
-  2. D8 rule 1 (two implementations): a suite is "normative" only if lock.json records that the generator's source
-     (Owl's biomesh.js) and an implementation independent of it agreed on every case; a normative suite has no case
-     outside the lock and the lock has no case outside the suite. With --base REF, every lock entry added since REF
-     (all of them when REF has no lock.json) must be reproduced by the oracle in the same run, so --lexicon-root is
-     required whenever the lock gained entries.
+  2. D8 rule 1 (two implementations): a suite is "normative" only if lock.json records that the implementations the
+     generator runs for it (SUITE_GENERATOR: Owl's biomesh.js, Owl's strict verifier in biomesh-core.js, BioChain-AI's
+     crypto-core.js, Owl's seal-crypto.js or the generator's own cv_spec.mjs) and an implementation independent of them
+     agreed on every case; a normative suite
+     has no case outside the lock and the lock has no case outside the suite. With --base REF, every lock entry added
+     since REF (all of them when REF has no lock.json) must be reproduced by the oracle in the same run, so
+     --lexicon-root (and, for merkle_rules_same_bytes, --biochain-root) is required whenever the lock gained entries.
   3. D8 rule 2 (immutability): every locked case still hashes to its locked SHA-256, taken over the canonical JSON of
      its id, input and expect (case_hash), so neither the input nor the expected value of a locked case can change;
      with --base REF, every lock entry present at REF is present unchanged now (entries may be added, never changed or
      removed). REF must resolve to a commit in this clone, or the check fails.
   4. RFC reading: tools/rfc07_reading.py (written from the RFC text) reproduces every expected value and the
-     informative GROWN/1 commitment. A disagreement means the RFC text or the vectors are wrong; it does not count
+     informative values it computes. A disagreement means the RFC text or the vectors are wrong; it does not count
      towards rule 1.
-  5. With --lexicon-root: the Hyperbolic Lexicon's chain.py and the Engram reference's ttmpt.py (Ebayednoob, GPL-3.0)
-     are imported from DIR at test time only, as their own tests import them; nothing of them is copied here (D13).
-     DIR is an Ebayednoob checkout (or an archive of it) holding "Pages/Hyperbolic Lexicon/reference",
-     "Pages/Engram Minds Eye/reference" and "Pages/Hyperbolic Oracles/reference". Their SHA-256 must match lock.json.
-     The oracle needs numpy (its hpstep package imports it; CI installs the version in oracle-requirements.txt);
-     nothing else here needs a third-party package. The oracle has no GROWN/1 function, so the GROWN/1 commitment and
-     its hash are informative values of shdccp2_record, outside the lock.
+  5. With --lexicon-root: the independent oracle (SUITE_ORACLE). The Hyperbolic Lexicon's chain.py, manifest.py (RFC 6962)
+     and attest.py (ATTEST/1 with the `cryptography` package), its hardened verifier verify.py (verifyPackage steps 1-6
+     for the tamper suites, with the V0 vocabulary it reads) and the Engram reference's ttmpt.py (Ebayednoob,
+     GPL-3.0) are imported from DIR at test time only, as their own tests import them; nothing of them is copied here
+     (D13). A disagreement with a normative suite fails the check; a disagreement with a draft suite is listed as OPEN
+     and does not (a draft suite is not yet agreed, and --promote never locks it while it disagrees). DIR is an Ebayednoob checkout (or an archive of it) holding "Pages/Hyperbolic Lexicon/reference",
+     "Pages/Engram Minds Eye/reference" and "Pages/Hyperbolic Oracles/reference" (and, for verify.py, the Lexicon's
+     reference/golden). With --biochain-root: BioChain-AI's
+     protocol/codex_engine.py (MIT), the owner's BIOSEED/1 code, imported the same way from a BioChain-AI checkout.
+     Every imported file's SHA-256 must match lock.json. The oracle needs numpy (the Lexicon's hpstep package imports
+     it) and cryptography (attest.py); CI installs the versions in oracle-requirements.txt. The oracle has no GROWN/1
+     function, so the GROWN/1 commitment and its hash are informative values of shdccp2_record, outside the lock.
 """
 import argparse
+import copy
 import hashlib
 import importlib
 import json
@@ -46,6 +55,7 @@ import re
 import struct
 import subprocess
 import sys
+import types
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CV = os.path.dirname(HERE)
@@ -55,6 +65,27 @@ import rfc07_reading as R  # noqa: E402
 
 INLINE_LIMIT = 8192
 GENERATOR_IMPL = 'owl-biomesh-js'
+STRICT_IMPL = 'owl-biomesh-core-strict-js'
+ORIGINAL_SUITES = ('shdccp2_packet', 'shdccp2_chunk', 'shdccp2_merkle', 'shdccp2_arith', 'shdccp2_weave', 'engram1',
+                   'shdccp2_record')
+# The implementations whose code computes each suite's expected values in generate.mjs (the first implementation of
+# D8 rule 1), and the independent implementations the oracle runs for it (the second).
+SUITE_GENERATOR = dict({name: [GENERATOR_IMPL] for name in ORIGINAL_SUITES}, **{
+    'shdccp2_limits': [GENERATOR_IMPL, 'cv-generate-mjs'],
+    'merkle_rules_same_bytes': [GENERATOR_IMPL, 'cv-generate-mjs'],
+    'rfc6962_lists': ['cv-generate-mjs'],
+    'attest1_profile': ['biochain-crypto-core-js', 'owl-seal-crypto-js', 'cv-generate-mjs'],
+    'attest1_profile_open': ['biochain-crypto-core-js'],
+    'engram1_keys': [GENERATOR_IMPL],
+    'rng_mulberry32': [GENERATOR_IMPL],
+    'shdccp2_tamper': [STRICT_IMPL],
+    'shdccp2_tamper_open': [STRICT_IMPL],
+})
+SUITE_ORACLE = {name: ['lexicon-chain-py'] for name in SUITE_GENERATOR}
+SUITE_ORACLE['merkle_rules_same_bytes'] = ['lexicon-chain-py', 'biochain-codex-engine-py']
+SUITE_ORACLE['shdccp2_tamper'] = SUITE_ORACLE['shdccp2_tamper_open'] = ['lexicon-verify-py']
+# The verify.py checks the tamper suites run (verifyPackage steps 1-6); the other four need a package, not a record.
+VERIFY_SKIP = ('commitment', 'attestation', 'inclusion', 'consistency')
 
 
 # ── a small JSON Schema validator (the subset schema.json uses) ─────────────
@@ -232,6 +263,88 @@ class Reading:
             raise AssertionError('the RFC validity predicate rejects a grown record at ' + bad)
         return record_expect(rec), grown_informative(rec)
 
+    def limits(self, c):
+        inp = c['input']
+        if 'coder_input_hex' in inp:
+            d = bytes.fromhex(inp['coder_input_hex'])
+            r = R.encode_chunk(d)
+            if R.decode_chunk(r, len(d)) != d:
+                raise AssertionError('decode(encode(input)) != input')
+            codes = R.code_bits(d)
+            bits = [b for b, _, _ in codes]
+            mx = max(bits)
+            at = bits.index(mx)
+            return ({'residual': r, 'residual_bytes': len(r) // 2, 'used_bits': sum(bits), 'max_code_bits': mx,
+                     'max_code_index': at},
+                    {'max_code_candidates': codes[at][1], 'max_code_escape': codes[at][2],
+                     'in_chunk_domain': len(d) <= R.CHUNK})
+        text = text_of(inp)
+        rec = R.grow(text, engrams=False)
+        # the bound of section 4.4 for the record's n bytes: informative, checked here against the RFC text only
+        return (limits_grow_expect(rec['stream'], [len(res) // 2 for _, res in R.parse_stream_strict(rec['stream'])]),
+                {'stream_bound': R.stream_bound(len(R.utf8_of_text(text)))})
+
+    def merkle_rules(self, c):
+        data = R.utf8_of_text(text_of(c['input']))
+        chunks = [data[i:i + R.CHUNK] for i in range(0, len(data), R.CHUNK)]
+        sl = [R.leaf(i, ch) for i, ch in enumerate(chunks)]
+        bl = [R.bioseed_leaf(i, ch) for i, ch in enumerate(chunks)]
+        return {'chunks': len(chunks), 'shdccp2': {'leafHashes': sl, 'merkleRoot': R.merkle_root(sl)},
+                'bioseed1': {'leafHashes': bl, 'merkleRoot': R.bioseed_root(bl)},
+                'rfc6962': {'leafHashes': [R.rfc_leaf(ch).hex() for ch in chunks], 'root': R.mth(chunks).hex()}}, None
+
+    def rfc6962(self, c):
+        return rfc6962_with(c, R.rfc_leaf, R.mth, R.audit_path, R.consistency_proof, R.verify_inclusion,
+                            R.verify_consistency)
+
+    def attest(self, c):
+        inp = c['input']
+        op = inp['op']
+        if op == 'identity':
+            try:
+                return {'identityId': R.identity_id(inp['seed'], inp['uid'])}, None
+            except ValueError as e:
+                return {'error': str(e)}, None
+        if op == 'snapshot':
+            try:
+                t = R.snapshot_text(inp['entries'])
+            except ValueError as e:
+                return {'error': str(e)}, None
+            return {'snapshot_text': t, 'snapshot_sha256': R.H(t), 'key_ids': [e['keyId'] for e in json.loads(t)]}, None
+        d = int(inp['d'], 16)
+        jwk = R.public_jwk(d)
+        if op == 'sign_message':
+            f = R.signature_fields(d, jwk, inp['message'])
+            del f['sig_low_s']
+            return dict(publicJwk=jwk, **f), None
+        ident = R.identity_id(inp['seed'], inp['uid'])
+        ch, other = R.H(inp['commitment']), R.H(inp['other_commitment'])
+        if op == 'attest':
+            kid, tok = R.fingerprint('K-', jwk), inp['epochToken']
+            kv = R.key_vector(ident, tok)
+            payload = R.attest_payload(kid, kv, ch, tok)
+            f = R.signature_fields(d, jwk, payload, R.attest_payload(kid, kv, other, tok))
+            return dict(identityId=ident, publicJwk=jwk, keyId=kid, keyVector=kv, contentHash=ch, payload=payload, **f), None
+        sid, tok = R.fingerprint('S-', jwk), inp['tickToken']
+        sv = R.key_vector(ident, tok)
+        # SEAL/1: the payloads are inputs (only Owl's code builds them); they must be this text's (section 13.4)
+        if inp['payload'] != R.seal_payload(sid, sv, ch, tok) or inp['other_payload'] != R.seal_payload(sid, sv, other, tok):
+            raise AssertionError('the SEAL/1 payloads given are not the ones section 13.4 builds from the other inputs')
+        f = R.signature_fields(d, jwk, inp['payload'], inp['other_payload'])
+        del f['sig_low_s']
+        return dict(cosmologicalId=ident, publicJwk=jwk, sealVector=sv, contentHash=ch, **f), {'sealId': sid}
+
+    def engram_keys(self, c):
+        t = c['input']['key_text']
+        return {'letters': R.key_letters(t), 'key_hex': R.engram_key(t)}, None
+
+    def rng(self, c):
+        return {'u32': R.mulberry32_u32(c['input']['seed'], c['input']['draws'])}, None
+
+    def tamper(self, c):
+        v = R.strict_verdict(c['input']['record'])
+        return {'ok': v['ok'], 'failed': v['failed']}, {'legacy': v['legacy']}
+
 
 def arith_with(c, hypot, qn, qmul, qconj, to_fixed):
     inp = c['input']
@@ -248,21 +361,65 @@ def arith_with(c, hypot, qn, qmul, qconj, to_fixed):
     return ({'text': t, 'number': f64hex(float(t))} if inp['digits'] == 4 else {'text': t}), None
 
 
+def limits_grow_expect(stream, residual_bytes):
+    return {'chunks': len(residual_bytes), 'residual_bytes': residual_bytes, 'stream_length': len(stream),
+            'stream_sha256': hashlib.sha256(stream.encode('ascii')).hexdigest()}
+
+
+def rfc6962_with(c, leaf, root, path, proof, verify_inclusion, verify_consistency):
+    """An rfc6962_lists case from one implementation's functions: leaf(entry) and root(entries) -> 32 bytes,
+    path(m, entries) and proof(m, entries) -> lists of 32 bytes, and the two RFC 9162 verifiers."""
+    inp, hb = c['input'], bytes.fromhex
+    op = inp.get('op')
+    if op is None:
+        return {'root': root([hb(e) for e in inp['entries_hex']]).hex()}, None
+    if op == 'inclusion':
+        ents, m = [hb(e) for e in inp['entries_hex']], inp['index']
+        p, lh, rt = path(m, ents), leaf(ents[m]), root(ents)
+        return {'leaf_hash': lh.hex(), 'path': [x.hex() for x in p], 'root': rt.hex(),
+                'valid': verify_inclusion(m, len(ents), lh, p, rt)}, None
+    if op == 'consistency':
+        ents, m = [hb(e) for e in inp['entries_hex']], inp['m']
+        pr, rm, rn = proof(m, ents), root(ents[:m]), root(ents)
+        return {'root_m': rm.hex(), 'root_n': rn.hex(), 'proof': [x.hex() for x in pr],
+                'valid': verify_consistency(m, len(ents), rm, rn, pr)}, None
+    if op == 'verify_inclusion':
+        return {'valid': verify_inclusion(inp['index'], inp['size'], hb(inp['leaf_hash']), [hb(x) for x in inp['path']],
+                                          hb(inp['root']))}, None
+    return {'valid': verify_consistency(inp['m'], inp['n'], hb(inp['root_m']), hb(inp['root_n']),
+                                        [hb(x) for x in inp['proof']])}, None
+
+
+def check_pinned_files(root, pin, what):
+    for rel, want in pin['files'].items():
+        got = hashlib.sha256(open(os.path.join(root, rel), 'rb').read()).hexdigest()
+        if got != want:
+            raise SystemExit(f'{what} file {rel}: sha256 {got}, lock.json pins {want}')
+
+
 class Lexicon:
-    """The Hyperbolic Lexicon's chain.py and the Engram reference's ttmpt.py, imported in place at test time."""
+    """The independent oracle, imported in place at test time: the Hyperbolic Lexicon's chain.py, manifest.py (RFC 6962)
+    and attest.py (ATTEST/1, with the `cryptography` package) and the Engram reference's ttmpt.py; with a BioChain-AI
+    checkout, also its protocol/codex_engine.py (BIOSEED/1)."""
     name = 'lexicon-chain-py'
     ROOTS = ('Pages/Hyperbolic Lexicon/reference', 'Pages/Engram Minds Eye/reference', 'Pages/Hyperbolic Oracles/reference')
 
-    def __init__(self, root, pin):
-        for rel, want in pin['files'].items():
-            got = hashlib.sha256(open(os.path.join(root, rel), 'rb').read()).hexdigest()
-            if got != want:
-                raise SystemExit(f'oracle file {rel}: sha256 {got}, lock.json pins {want}')
+    def __init__(self, root, pin, biochain_root=None, biochain_pin=None, verify_pin=None):
+        check_pinned_files(root, pin, 'oracle')
+        self.verify_pin, self.V, self.session = verify_pin, None, None
         for r in self.ROOTS:
             sys.path.insert(0, os.path.join(root, r))
         sys.dont_write_bytecode = True
+        self.root = root
         self.C = importlib.import_module('lexicon.chain')
         self.T = importlib.import_module('engram.ttmpt')
+        self.M = importlib.import_module('lexicon.manifest')
+        self.A = importlib.import_module('lexicon.attest')
+        self.B = None
+        if biochain_root:
+            check_pinned_files(biochain_root, biochain_pin, 'BioChain-AI oracle')
+            sys.path.insert(0, os.path.join(biochain_root, 'protocol'))
+            self.B = importlib.import_module('codex_engine')
 
     def packet(self, c):
         C = self.C
@@ -327,9 +484,128 @@ class Lexicon:
                     'input-too-large' if m.startswith('Grow input capped') else 'unexpected:' + m}, None
         return record_expect(rec), None
 
+    def limits(self, c):
+        C, inp = self.C, c['input']
+        if 'coder_input_hex' in inp:
+            d = bytes.fromhex(inp['coder_input_hex'])
+            r = C.encode_chunk(d)
+            if bytes(C.decode_chunk(r, len(d))) != d:
+                raise AssertionError('chain.decode_chunk does not give the input back')
+            # the bits the decoder reads for the first k codes, k = 0..n (decode_chunk's trace)
+            used = [C.decode_chunk(r, k, trace=True)[1] for k in range(len(d) + 1)]
+            costs = [used[k + 1] - used[k] for k in range(len(d))]
+            mx = max(costs)
+            return {'residual': r, 'residual_bytes': len(r) // 2, 'used_bits': used[-1], 'max_code_bits': mx,
+                    'max_code_index': costs.index(mx)}, None
+        # a grown record (the bound of section 4.4 on these cases is informative: chain.py does not compute it)
+        rec = C.grow(text_of(inp), engrams=False)
+        return limits_grow_expect(rec['stream'], [len(res) // 2 for _, res, _ in C.frames(rec['stream'])]), None
+
+    def merkle_rules(self, c):
+        C, M = self.C, self.M
+        if self.B is None:
+            raise RuntimeError('BIOSEED/1 needs --biochain-root (BioChain-AI protocol/codex_engine.py)')
+        data = C.js_utf8(text_of(c['input']))
+        chunks = [data[i:i + C.CHUNK] for i in range(0, len(data), C.CHUNK)]
+        sl = [C.leaf_hash(i, ch) for i, ch in enumerate(chunks)]
+        bl = [self.B._chunk_hash(i, ch) for i, ch in enumerate(chunks)]
+        return {'chunks': len(chunks), 'shdccp2': {'leafHashes': sl, 'merkleRoot': C.merkle_shdccp2(sl)},
+                'bioseed1': {'leafHashes': bl, 'merkleRoot': self.B.merkle_root(bl)},
+                'rfc6962': {'leafHashes': [M.leaf_hash(ch).hex() for ch in chunks], 'root': M.root(chunks).hex()}}, None
+
+    def rfc6962(self, c):
+        M = self.M
+        return rfc6962_with(c, M.leaf_hash, M.root, lambda m, e: M.Log(e).path(m), lambda m, e: M.Log(e).consistency(m),
+                            M.verify_inclusion, M.verify_consistency)
+
+    def attest(self, c):
+        A, inp = self.A, c['input']
+        op = inp['op']
+        if op == 'identity':
+            try:
+                return {'identityId': A.identity_id(inp['seed'], inp['uid'])}, None
+            except ValueError as e:
+                return {'error': 'empty-seed' if 'empty' in str(e) else 'unexpected:' + str(e)}, None
+        if op == 'snapshot':
+            try:
+                t = A.snapshot_text(inp['entries'])
+            except ValueError as e:
+                m = str(e)
+                return {'error': 'duplicate-key' if 'share a keyId' in m else
+                        'unknown-status' if 'unknown key status' in m else 'unexpected:' + m}, None
+            return {'snapshot_text': t, 'snapshot_sha256': A.sha256hex(t), 'key_ids': [e['keyId'] for e in json.loads(t)]}, None
+        priv = A.private_key(int(inp['d'], 16))
+        pub = priv.public_key()
+        jwk = A.jwk_of(pub)
+
+        def signed(payload, other=None):
+            sig = A.sign_p1363(priv, payload, deterministic=True)       # RFC 6979, by cryptography (OpenSSL)
+            twin = A.high_s_twin(sig)
+            high = int.from_bytes(sig[32:], 'big') > A.P256_N // 2
+            ver = {'sig': A.verify_p1363(pub, sig, payload), 'twin': A.verify_p1363(pub, twin, payload)}
+            if other is not None:
+                ver['other_content'] = A.verify_p1363(pub, sig, other)
+            return {'sig': sig.hex(), 'high_s': high, 'twin': twin.hex(), 'der': A.p1363_to_der(sig).hex(),
+                    'der_twin': A.p1363_to_der(twin).hex(), 'verifies': ver}, (twin if high else sig).hex()
+
+        if op == 'sign_message':
+            f, _ = signed(inp['message'])
+            return dict(publicJwk=jwk, **f), None
+        ident = A.identity_id(inp['seed'], inp['uid'])
+        ch, other = A.sha256hex(inp['commitment']), A.sha256hex(inp['other_commitment'])
+        if op == 'attest':
+            kid, tok = A.key_id(jwk), inp['epochToken']
+            kv = A.key_vector(ident, tok)
+            payload = A.attestation_payload(kid, kv, ch, tok)
+            f, low = signed(payload, A.attestation_payload(kid, kv, other, tok))
+            return dict(identityId=ident, publicJwk=jwk, keyId=kid, keyVector=kv, contentHash=ch, payload=payload,
+                        sig_low_s=low, **f), None
+        # SEAL/1: attest.py has no SEAL/1 code. The seal vector is its key-vector derivation over the cosmologicalId and
+        # the tick token (RFC 07 section 13.2); the signatures are over the payload text the case gives as input. The
+        # sealId and the payload construction are not computed here (they are informative or inputs in the suite).
+        sv = A.key_vector(ident, inp['tickToken'])
+        f, _ = signed(inp['payload'], inp['other_payload'])
+        return dict(cosmologicalId=ident, publicJwk=jwk, sealVector=sv, contentHash=ch, **f), None
+
+    def engram_keys(self, c):
+        t = c['input']['key_text']
+        return {'letters': ''.join(ch for ch in t.upper() if 'A' <= ch <= 'Z'),
+                'key_hex': self.T.hex_lsb(self.T.crystallize(t)).upper()}, None
+
+    def rng(self, c):
+        f = self.T.mulberry32(c['input']['seed'])
+        return {'u32': [int(f() * 4294967296) for _ in range(c['input']['draws'])]}, None
+
+    def tamper(self, c):
+        """The Lexicon's hardened verifier (verify.py, the reference of lexicon_core.js verifyPackage) on a package that
+        holds only the record, with the four package checks skipped: its steps 1-6, parity .. derived, which are the
+        checks of RFC 07 section 12.3 under the same names. Its 'derived' also computes the V0 id stream (the session's
+        vocabulary) and the exact weave, which a record cannot fail."""
+        if self.V is None:
+            check_pinned_files(self.root, self.verify_pin, 'oracle (verify.py)')
+            self.V = importlib.import_module('lexicon.verify')
+            if tuple(self.V.CHECKS[:6]) != R.STRICT_CHECKS or set(self.V.CHECKS[6:]) != set(VERIFY_SKIP):
+                raise SystemExit('verify.py does not run the checks of RFC 07 section 12.3 first, in that order')
+            vocab = importlib.import_module('lexicon.wordpiece').load_v0()
+            self.session = types.SimpleNamespace(vocab=vocab)          # what steps 1-6 read of a Session
+        rec = c['input']['record']
+        v = self.V.verify({'record': copy.deepcopy(rec)}, self.session, skip=VERIFY_SKIP)
+        failed = None if v['failed'] == '-' else v['failed']
+        # legacy (RFC 07 section 12.3) is informative: verify.py has no notion of it. This adapter maps verify.py's
+        # parity reasons for a JSON object that is not shdccp/2 ("no shdccp/2 record": streamVersion) or has no string
+        # stream (chain.frames' "no stream on the record") to legacy, and a value that is not an object to not legacy;
+        # the mapping is compared with the suite's informative value, and it is not counted towards rule 1.
+        reason = v['checks'][0][2]
+        legacy = failed == 'parity' and isinstance(rec, dict) and reason in (
+            'no shdccp/2 record', 'ValueError: no stream on the record')
+        return {'ok': failed is None, 'failed': failed}, {'legacy': legacy}
+
 
 DISPATCH = {'shdccp2_packet': 'packet', 'shdccp2_chunk': 'chunk', 'shdccp2_merkle': 'merkle', 'shdccp2_arith': 'arith',
-            'shdccp2_weave': 'weave', 'engram1': 'engram', 'shdccp2_record': 'record'}
+            'shdccp2_weave': 'weave', 'engram1': 'engram', 'shdccp2_record': 'record', 'shdccp2_limits': 'limits',
+            'merkle_rules_same_bytes': 'merkle_rules', 'rfc6962_lists': 'rfc6962', 'attest1_profile': 'attest',
+            'engram1_keys': 'engram_keys', 'rng_mulberry32': 'rng', 'shdccp2_tamper': 'tamper',
+            'shdccp2_tamper_open': 'tamper', 'attest1_profile_open': 'attest'}
 
 
 def run_impl(impl, suite):
@@ -346,7 +622,9 @@ def run_impl(impl, suite):
             continue
         if got != c['expect']:
             keys = sorted(k for k in set(got) | set(c['expect']) if got.get(k) != c['expect'].get(k))
-            fails.append(f'{suite["suite"]}/{c["id"]}: differs in {keys}')
+            shown = '; '.join(f'{k}: {json.dumps(got.get(k))[:40]}, expected {json.dumps(c["expect"].get(k))[:40]}'
+                              for k in keys[:4])
+            fails.append(f'{suite["suite"]}/{c["id"]}: differs in {keys} ({shown})')
         if info:
             for k, v in info.items():
                 if c.get('informative', {}).get(k, v) != v:
@@ -381,6 +659,8 @@ def main():
     ap.add_argument('--base', help='git commit whose lock.json entries must still be present unchanged; entries added '
                                    'since must be reproduced by the oracle in this run (needs --lexicon-root)')
     ap.add_argument('--lexicon-root', help='Ebayednoob checkout or archive holding the Lexicon oracle (test time only)')
+    ap.add_argument('--biochain-root', help='BioChain-AI checkout holding protocol/codex_engine.py, the BIOSEED/1 oracle '
+                                            '(test time only; needed for merkle_rules_same_bytes)')
     ap.add_argument('--promote', action='store_true', help='with --lexicon-root: lock every fully agreed draft suite '
                                                            'and every agreed new case of a normative suite')
     a = ap.parse_args()
@@ -426,8 +706,9 @@ def main():
             continue
         agreed = entry.get('agreed_by', [])
         indep = [i for i in agreed if impls.get(i, {}).get('independent_of_generator')]
-        if GENERATOR_IMPL not in agreed or not indep:
-            errors.append(f'rule 1: {name} is locked without the generator and an independent implementation')
+        if not all(g in agreed for g in SUITE_GENERATOR.get(name, [GENERATOR_IMPL])) or not indep \
+                or any(i not in impls for i in agreed):
+            errors.append(f'rule 1: {name} is locked without its generator source and an independent implementation')
         if s['status'] != 'normative':
             errors.append(f'rule 1: {name} is locked but its file says {s["status"]} (regenerate)')
         ids = {c['id']: c for c in s['cases']}
@@ -476,13 +757,20 @@ def main():
 
     # 5. the Lexicon oracle
     agreed_suites, oracle_agreed = [], set()  # suites and (suite, case id) the oracle reproduced in this run
+    open_items = []  # the oracle's disagreements with draft suites: listed, not failures
     if a.lexicon_root:
-        lex = Lexicon(a.lexicon_root, impls['lexicon-chain-py'])
+        lex = Lexicon(a.lexicon_root, impls['lexicon-chain-py'], a.biochain_root, impls['biochain-codex-engine-py'],
+                      impls['lexicon-verify-py'])
         for s in suites.values():
             res = run_impl(lex, s)
             ok = [cid for cid, v in res.items() if not v]
-            print(f'lexicon-chain-py {s["suite"]}: {len(ok)}/{len(res)} cases agree')
-            errors += ['lexicon-chain-py ' + x for v in res.values() for x in v]
+            who = ' + '.join(SUITE_ORACLE[s['suite']])
+            print(f'{who} {s["suite"]}: {len(ok)}/{len(res)} cases agree' + (' (draft)' if s['status'] == 'draft' else ''))
+            found = [who + ' ' + x for v in res.values() for x in v]
+            if s['status'] == 'draft':
+                open_items += found
+            else:
+                errors += found
             oracle_agreed.update((s['suite'], cid) for cid in ok)
             if len(ok) == len(res):
                 agreed_suites.append(s['suite'])
@@ -497,7 +785,7 @@ def main():
         for name in agreed_suites:
             if name in lock['normative']:
                 continue
-            lock['normative'][name] = {'agreed_by': [GENERATOR_IMPL, 'lexicon-chain-py'],
+            lock['normative'][name] = {'agreed_by': SUITE_GENERATOR[name] + SUITE_ORACLE[name],
                                        'cases': {c['id']: case_hash(c) for c in by_suite[name]['cases']}}
             added.append(name)
         ids_of = {name: {c['id']: c for c in s['cases']} for name, s in by_suite.items()}
@@ -525,9 +813,12 @@ def main():
         print(f'rule 1: {len(new)} lock entries added since {a.base}'
               + (f', {sum(1 for x in new if x in oracle_agreed)} reproduced by the oracle in this run' if a.lexicon_root else ''))
 
+    for e in open_items:
+        print('OPEN ' + e)
     for e in errors:
         print('FAIL ' + e)
-    print('check: ' + ('FAILED' if errors else 'ok'))
+    print('check: ' + ('FAILED' if errors else 'ok')
+          + (f' ({len(open_items)} open disagreements in draft suites)' if open_items else ''))
     return 1 if errors else 0
 
 

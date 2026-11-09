@@ -8,7 +8,11 @@
   "required": ["suite", "spec_version", "rfc", "wire", "status", "description", "generator", "source", "license", "cases"],
   "additionalProperties": false,
   "properties": {
-    "suite": { "enum": ["shdccp2_packet", "shdccp2_chunk", "shdccp2_merkle", "shdccp2_arith", "shdccp2_weave", "engram1", "shdccp2_record"] },
+    "suite": {
+      "enum": ["shdccp2_packet", "shdccp2_chunk", "shdccp2_merkle", "shdccp2_arith", "shdccp2_weave", "engram1", "shdccp2_record",
+               "shdccp2_limits", "merkle_rules_same_bytes", "rfc6962_lists", "attest1_profile", "engram1_keys", "rng_mulberry32",
+               "shdccp2_tamper", "shdccp2_tamper_open", "attest1_profile_open"]
+    },
     "spec_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
     "rfc": { "const": "07" },
     "wire": { "const": "shdccp/2" },
@@ -19,16 +23,11 @@
     "description": { "type": "string", "minLength": 1 },
     "generator": { "const": "contract_vectors/tools/generate.mjs" },
     "source": {
-      "type": "object",
-      "required": ["repository", "commit", "files", "license", "engine"],
-      "additionalProperties": false,
-      "properties": {
-        "repository": { "type": "string" },
-        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
-        "files": { "type": "object", "additionalProperties": { "$ref": "#/$defs/sha256" } },
-        "license": { "type": "string" },
-        "engine": { "type": "string" }
-      }
+      "description": "Where the expected values come from: one pinned source (the seven suites of S1), or a list of pinned sources and the generator's own code (cv_spec.mjs) with the specifications it was written from.",
+      "oneOf": [
+        { "$ref": "#/$defs/pinned_source" },
+        { "type": "array", "minItems": 1, "items": { "oneOf": [{ "$ref": "#/$defs/pinned_source" }, { "$ref": "#/$defs/spec_source" }] } }
+      ]
     },
     "license": { "const": "CC0-1.0" },
     "binary": {
@@ -54,7 +53,16 @@
     { "if": { "properties": { "suite": { "const": "shdccp2_arith" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_arith" } } } } },
     { "if": { "properties": { "suite": { "const": "shdccp2_weave" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_weave" } } } } },
     { "if": { "properties": { "suite": { "const": "engram1" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_engram" } } } } },
-    { "if": { "properties": { "suite": { "const": "shdccp2_record" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_record" } } } } }
+    { "if": { "properties": { "suite": { "const": "shdccp2_record" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_record" } } } } },
+    { "if": { "properties": { "suite": { "const": "shdccp2_limits" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_limits" } } } } },
+    { "if": { "properties": { "suite": { "const": "merkle_rules_same_bytes" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_merkle_rules" } } } } },
+    { "if": { "properties": { "suite": { "const": "rfc6962_lists" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_rfc6962" } } } } },
+    { "if": { "properties": { "suite": { "const": "attest1_profile" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_attest" } } } } },
+    { "if": { "properties": { "suite": { "const": "engram1_keys" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_engram_keys" } } } } },
+    { "if": { "properties": { "suite": { "const": "rng_mulberry32" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_rng" } } } } },
+    { "if": { "properties": { "suite": { "const": "shdccp2_tamper" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_tamper" } } } } },
+    { "if": { "properties": { "suite": { "const": "shdccp2_tamper_open" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_tamper" } } } } },
+    { "if": { "properties": { "suite": { "const": "attest1_profile_open" } } }, "then": { "properties": { "cases": { "items": { "$ref": "#/$defs/case_attest" } } } } }
   ],
   "$defs": {
     "id": { "type": "string", "pattern": "^[A-Za-z0-9_]+$" },
@@ -241,6 +249,247 @@
             "grown_commitment": { "type": "string", "pattern": "^GROWN/1\\|" }, "grown_content_hash": { "$ref": "#/$defs/sha256" }
           }
         }
+      }
+    },
+    "pinned_source": {
+      "type": "object",
+      "required": ["repository", "commit", "files", "license", "engine"],
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string" },
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "files": { "type": "object", "additionalProperties": { "$ref": "#/$defs/sha256" } },
+        "license": { "type": "string" },
+        "engine": { "type": "string" }
+      }
+    },
+    "spec_source": {
+      "type": "object", "required": ["code", "license", "engine", "basis"], "additionalProperties": false,
+      "properties": {
+        "code": { "const": "contract_vectors/tools/cv_spec.mjs" }, "license": { "const": "CC0-1.0" }, "engine": { "type": "string" },
+        "basis": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 }
+      }
+    },
+    "hex_list": { "type": "array", "items": { "$ref": "#/$defs/sha256" } },
+    "text_only_input": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "text": { "type": "string" },
+        "text_parts": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "oneOf": [
+              { "type": "string" },
+              { "type": "object", "required": ["repeat", "length"], "additionalProperties": false,
+                "properties": { "repeat": { "type": "string", "pattern": "^[\\x20-\\x7e]+$" }, "length": { "type": "integer", "minimum": 1 } } }
+            ]
+          }
+        }
+      },
+      "oneOf": [{ "required": ["text"] }, { "required": ["text_parts"] }]
+    },
+    "case_limits": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": {
+          "oneOf": [
+            { "type": "object", "required": ["coder_input_hex"], "additionalProperties": false,
+              "properties": { "coder_input_hex": { "type": "string", "pattern": "^([0-9a-f]{2}){1,1024}$" } } },
+            { "$ref": "#/$defs/text_only_input" }
+          ]
+        },
+        "expect": {
+          "oneOf": [
+            { "type": "object", "required": ["residual", "residual_bytes", "used_bits", "max_code_bits", "max_code_index"], "additionalProperties": false,
+              "properties": {
+                "residual": { "$ref": "#/$defs/bytes_hex" }, "residual_bytes": { "type": "integer", "minimum": 1 },
+                "used_bits": { "type": "integer", "minimum": 1 }, "max_code_bits": { "type": "integer", "minimum": 1, "maximum": 25 },
+                "max_code_index": { "type": "integer", "minimum": 0 } } },
+            { "type": "object", "required": ["chunks", "residual_bytes", "stream_length", "stream_sha256"], "additionalProperties": false,
+              "properties": {
+                "chunks": { "type": "integer", "minimum": 1, "maximum": 84 },
+                "residual_bytes": { "type": "array", "items": { "type": "integer", "minimum": 1, "maximum": 2250 }, "minItems": 1, "maxItems": 84 },
+                "stream_length": { "type": "integer", "minimum": 1, "maximum": 380016 }, "stream_sha256": { "$ref": "#/$defs/sha256" } } }
+          ]
+        },
+        "informative": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "max_code_candidates": { "type": "integer", "minimum": 0, "maximum": 256 }, "max_code_escape": { "type": "boolean" },
+            "in_chunk_domain": { "type": "boolean" }, "stream_hex_per_input_byte": { "type": "number" },
+            "stream_bound": {
+              "description": "RFC 07 section 4.4's bound for the record's n input bytes; informative (no independent implementation computes it)",
+              "type": "object", "required": ["chunks", "last_chunk_bytes", "max_bits_per_byte", "max_residual_bytes_full_chunk", "max_stream_hex", "cap_hex"], "additionalProperties": false,
+              "properties": {
+                "chunks": { "type": "integer", "minimum": 1, "maximum": 84 }, "last_chunk_bytes": { "type": "integer", "minimum": 1, "maximum": 720 },
+                "max_bits_per_byte": { "const": 25 }, "max_residual_bytes_full_chunk": { "const": 2250 },
+                "max_stream_hex": { "type": "integer", "minimum": 1, "maximum": 380016 }, "cap_hex": { "type": "integer", "minimum": 4524, "maximum": 380016 } } }
+          }
+        }
+      }
+    },
+    "case_merkle_rules": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": { "$ref": "#/$defs/text_only_input" },
+        "expect": {
+          "type": "object", "required": ["chunks", "shdccp2", "bioseed1", "rfc6962"], "additionalProperties": false,
+          "properties": {
+            "chunks": { "type": "integer", "minimum": 1, "maximum": 84 },
+            "shdccp2": { "type": "object", "required": ["leafHashes", "merkleRoot"], "additionalProperties": false,
+              "properties": { "leafHashes": { "$ref": "#/$defs/hex_list" }, "merkleRoot": { "$ref": "#/$defs/sha256" } } },
+            "bioseed1": { "type": "object", "required": ["leafHashes", "merkleRoot"], "additionalProperties": false,
+              "properties": { "leafHashes": { "$ref": "#/$defs/hex_list" }, "merkleRoot": { "$ref": "#/$defs/sha256" } } },
+            "rfc6962": { "type": "object", "required": ["leafHashes", "root"], "additionalProperties": false,
+              "properties": { "leafHashes": { "$ref": "#/$defs/hex_list" }, "root": { "$ref": "#/$defs/sha256" } } }
+          }
+        }
+      }
+    },
+    "case_rfc6962": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": {
+          "oneOf": [
+            { "type": "object", "required": ["entries_hex"], "additionalProperties": false,
+              "properties": { "entries_hex": { "type": "array", "items": { "$ref": "#/$defs/bytes_hex" }, "maxItems": 64 } } },
+            { "type": "object", "required": ["op", "entries_hex", "index"], "additionalProperties": false,
+              "properties": { "op": { "const": "inclusion" }, "entries_hex": { "type": "array", "items": { "$ref": "#/$defs/bytes_hex" }, "minItems": 1, "maxItems": 64 }, "index": { "type": "integer", "minimum": 0 } } },
+            { "type": "object", "required": ["op", "entries_hex", "m"], "additionalProperties": false,
+              "properties": { "op": { "const": "consistency" }, "entries_hex": { "type": "array", "items": { "$ref": "#/$defs/bytes_hex" }, "minItems": 1, "maxItems": 64 }, "m": { "type": "integer", "minimum": 1 } } },
+            { "type": "object", "required": ["op", "index", "size", "leaf_hash", "path", "root"], "additionalProperties": false,
+              "properties": { "op": { "const": "verify_inclusion" }, "index": { "type": "integer" }, "size": { "type": "integer" },
+                "leaf_hash": { "$ref": "#/$defs/sha256" }, "path": { "$ref": "#/$defs/hex_list" }, "root": { "$ref": "#/$defs/sha256" } } },
+            { "type": "object", "required": ["op", "m", "n", "root_m", "root_n", "proof"], "additionalProperties": false,
+              "properties": { "op": { "const": "verify_consistency" }, "m": { "type": "integer" }, "n": { "type": "integer" },
+                "root_m": { "$ref": "#/$defs/sha256" }, "root_n": { "$ref": "#/$defs/sha256" }, "proof": { "$ref": "#/$defs/hex_list" } } }
+          ]
+        },
+        "expect": {
+          "oneOf": [
+            { "type": "object", "required": ["root"], "additionalProperties": false, "properties": { "root": { "$ref": "#/$defs/sha256" } } },
+            { "type": "object", "required": ["leaf_hash", "path", "root", "valid"], "additionalProperties": false,
+              "properties": { "leaf_hash": { "$ref": "#/$defs/sha256" }, "path": { "$ref": "#/$defs/hex_list" }, "root": { "$ref": "#/$defs/sha256" }, "valid": { "type": "boolean" } } },
+            { "type": "object", "required": ["root_m", "root_n", "proof", "valid"], "additionalProperties": false,
+              "properties": { "root_m": { "$ref": "#/$defs/sha256" }, "root_n": { "$ref": "#/$defs/sha256" }, "proof": { "$ref": "#/$defs/hex_list" }, "valid": { "type": "boolean" } } },
+            { "type": "object", "required": ["valid"], "additionalProperties": false, "properties": { "valid": { "type": "boolean" } } }
+          ]
+        }
+      }
+    },
+    "jwk": {
+      "type": "object", "required": ["kty", "crv", "x", "y"], "additionalProperties": false,
+      "properties": { "kty": { "const": "EC" }, "crv": { "const": "P-256" }, "x": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" }, "y": { "type": "string", "pattern": "^[A-Za-z0-9_-]{43}$" } }
+    },
+    "scalar": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "vector64": { "type": "string", "pattern": "^[0-9A-F]{16}$" },
+    "sig": { "type": "string", "pattern": "^[0-9a-f]{128}$" },
+    "der": { "type": "string", "pattern": "^30[0-9a-f]{2}02[0-9a-f]+$" },
+    "sig_fields": {
+      "type": "object", "required": ["sig", "high_s", "twin", "der", "der_twin", "verifies"],
+      "properties": {
+        "sig": { "$ref": "#/$defs/sig" }, "high_s": { "type": "boolean" }, "twin": { "$ref": "#/$defs/sig" },
+        "der": { "$ref": "#/$defs/der" }, "der_twin": { "$ref": "#/$defs/der" }
+      }
+    },
+    "case_attest": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": {
+          "oneOf": [
+            { "type": "object", "required": ["op", "seed", "uid"], "additionalProperties": false,
+              "properties": { "op": { "const": "identity" }, "seed": { "type": "string" }, "uid": { "type": "string" } } },
+            { "type": "object", "required": ["op", "d", "message"], "additionalProperties": false,
+              "properties": { "op": { "const": "sign_message" }, "d": { "$ref": "#/$defs/scalar" }, "message": { "type": "string" } } },
+            { "type": "object", "required": ["op", "d", "seed", "uid", "epochToken", "commitment", "other_commitment"], "additionalProperties": false,
+              "properties": { "op": { "const": "attest" }, "d": { "$ref": "#/$defs/scalar" }, "seed": { "type": "string" }, "uid": { "type": "string" },
+                "epochToken": { "type": "string", "pattern": "^(EPOCH\\.[0-9]+|EPOCH-OFFLINE-[0-9]{4}-[0-9]{2}-[0-9]{2})$" },
+                "commitment": { "type": "string" }, "other_commitment": { "type": "string" } } },
+            { "type": "object", "required": ["op", "d", "seed", "uid", "tickToken", "commitment", "other_commitment", "payload", "other_payload"], "additionalProperties": false,
+              "properties": { "op": { "const": "seal" }, "d": { "$ref": "#/$defs/scalar" }, "seed": { "type": "string" }, "uid": { "type": "string" },
+                "tickToken": { "type": "string", "pattern": "^SCHU\\.[0-9]+\\.[0-9.]+$" },
+                "commitment": { "type": "string" }, "other_commitment": { "type": "string" },
+                "payload": { "type": "string", "pattern": "^SEAL/1\\|" }, "other_payload": { "type": "string", "pattern": "^SEAL/1\\|" } } },
+            { "type": "object", "required": ["op", "entries"], "additionalProperties": false,
+              "properties": { "op": { "const": "snapshot" }, "entries": { "type": "array", "minItems": 1, "items": {
+                "type": "object", "required": ["publicJwk", "keyVector", "status"], "additionalProperties": false,
+                "properties": { "publicJwk": { "$ref": "#/$defs/jwk" }, "keyVector": { "$ref": "#/$defs/vector64" }, "status": { "type": "string" } } } } } }
+          ]
+        },
+        "expect": {
+          "oneOf": [
+            { "type": "object", "required": ["identityId"], "additionalProperties": false, "properties": { "identityId": { "type": "string", "pattern": "^0x[0-9A-F]{16}$" } } },
+            { "type": "object", "required": ["error"], "additionalProperties": false, "properties": { "error": { "enum": ["empty-seed", "duplicate-key", "unknown-status"] } } },
+            { "allOf": [{ "$ref": "#/$defs/sig_fields" }], "type": "object", "required": ["publicJwk"], "additionalProperties": false,
+              "properties": { "publicJwk": { "$ref": "#/$defs/jwk" }, "sig": {}, "high_s": {}, "twin": {}, "der": {}, "der_twin": {},
+                "verifies": { "type": "object", "required": ["sig", "twin"], "additionalProperties": false, "properties": { "sig": { "type": "boolean" }, "twin": { "type": "boolean" } } } } },
+            { "allOf": [{ "$ref": "#/$defs/sig_fields" }], "type": "object", "required": ["identityId", "publicJwk", "keyId", "keyVector", "contentHash", "payload", "sig_low_s"], "additionalProperties": false,
+              "properties": { "identityId": { "type": "string", "pattern": "^0x[0-9A-F]{16}$" }, "publicJwk": { "$ref": "#/$defs/jwk" },
+                "keyId": { "type": "string", "pattern": "^K-[0-9a-f]{24}$" }, "keyVector": { "$ref": "#/$defs/vector64" }, "contentHash": { "$ref": "#/$defs/sha256" },
+                "payload": { "type": "string", "pattern": "^ATTEST/1\\|" }, "sig": {}, "high_s": {}, "sig_low_s": { "$ref": "#/$defs/sig" }, "twin": {}, "der": {}, "der_twin": {},
+                "verifies": { "$ref": "#/$defs/verifies3" } } },
+            { "allOf": [{ "$ref": "#/$defs/sig_fields" }], "type": "object", "required": ["cosmologicalId", "publicJwk", "sealVector", "contentHash"], "additionalProperties": false,
+              "properties": { "cosmologicalId": { "type": "string", "pattern": "^0x[0-9A-F]{16}$" }, "publicJwk": { "$ref": "#/$defs/jwk" },
+                "sealVector": { "$ref": "#/$defs/vector64" }, "contentHash": { "$ref": "#/$defs/sha256" },
+                "sig": {}, "high_s": {}, "twin": {}, "der": {}, "der_twin": {},
+                "verifies": { "$ref": "#/$defs/verifies3" } } },
+            { "type": "object", "required": ["snapshot_text", "snapshot_sha256", "key_ids"], "additionalProperties": false,
+              "properties": { "snapshot_text": { "type": "string", "pattern": "^\\[\\{\"keyId\":" }, "snapshot_sha256": { "$ref": "#/$defs/sha256" },
+                "key_ids": { "type": "array", "items": { "type": "string", "pattern": "^K-[0-9a-f]{24}$" }, "minItems": 1 } } }
+          ]
+        },
+        "informative": {
+          "type": "object", "additionalProperties": false,
+          "properties": { "k": { "type": "string", "pattern": "^[0-9A-F]{64}$" }, "key": { "type": "string" }, "epoch": { "type": "object" }, "tick": { "type": "object" },
+            "sealId": { "type": "string", "pattern": "^S-[0-9a-f]{24}$" } }
+        }
+      }
+    },
+    "verifies3": {
+      "type": "object", "required": ["sig", "twin", "other_content"], "additionalProperties": false,
+      "properties": { "sig": { "type": "boolean" }, "twin": { "type": "boolean" }, "other_content": { "type": "boolean" } }
+    },
+    "case_engram_keys": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": { "type": "object", "required": ["key_text"], "additionalProperties": false, "properties": { "key_text": { "type": "string" } } },
+        "expect": { "type": "object", "required": ["letters", "key_hex"], "additionalProperties": false,
+          "properties": { "letters": { "type": "string", "pattern": "^[A-Z]*$" }, "key_hex": { "$ref": "#/$defs/vector64" } } }
+      }
+    },
+    "case_rng": {
+      "type": "object", "required": ["id", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": { "type": "object", "required": ["seed", "draws"], "additionalProperties": false,
+          "properties": { "seed": { "type": "integer", "minimum": -9007199254740991, "maximum": 9007199254740991 }, "draws": { "type": "integer", "minimum": 1, "maximum": 1024 } } },
+        "expect": { "type": "object", "required": ["u32"], "additionalProperties": false,
+          "properties": { "u32": { "type": "array", "items": { "type": "integer", "minimum": 0, "maximum": 4294967295 } } } }
+      }
+    },
+    "case_tamper": {
+      "description": "A value given to a strict verifier (RFC 07 sections 12.3 and 12.4) and its verdict: ok and the first failing check. input.record is any JSON value: a record, an altered record, or a value that is not a record. The verdict's legacy flag is informative (RFC 07 section 12.5).",
+      "type": "object", "required": ["id", "note", "input", "expect"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" }, "note": { "$ref": "#/$defs/note" },
+        "input": { "type": "object", "required": ["record"], "additionalProperties": false, "properties": { "record": {} } },
+        "expect": { "type": "object", "required": ["ok", "failed"], "additionalProperties": false,
+          "properties": { "ok": { "type": "boolean" }, "failed": { "enum": [null, "parity", "canonical", "crystal", "leaves", "weaves", "derived"] } },
+          "oneOf": [
+            { "properties": { "ok": { "const": true }, "failed": { "const": null } } },
+            { "properties": { "ok": { "const": false }, "failed": { "enum": ["parity", "canonical", "crystal", "leaves", "weaves", "derived"] } } }
+          ] },
+        "informative": { "type": "object", "additionalProperties": false,
+          "properties": {
+            "legacy": { "type": "boolean" },
+            "base": { "type": "string", "pattern": "^shdccp2_record/[A-Za-z0-9_]+$" }, "owl_detail": { "type": "string" },
+            "owl_fields": { "type": "array", "items": { "type": "string" } }, "self_consistent": { "type": "boolean" },
+            "label": { "type": "string" } } }
       }
     }
   }

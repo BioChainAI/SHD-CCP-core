@@ -19,13 +19,27 @@ Nothing licensed GPL-3.0 here may be copied into them.
 
 Third-party material and how it is used:
 
-- Owl-Academy scripts/biomesh.js and scripts/seal-crypto.js (MIT, (c) Ebayednoob), at commit
-  7f45f356f5c46ea0eb099905b2505a06e8c28fd7. contract_vectors/tools/generate.mjs reads them from an Owl-Academy clone's
-  git object store and runs them in memory to compute the expected values. No part of their code is in this
+- Owl-Academy scripts/biomesh.js, scripts/seal-crypto.js and scripts/schumann-oracle.js (MIT, (c) Ebayednoob), at
+  commit 7f45f356f5c46ea0eb099905b2505a06e8c28fd7. contract_vectors/tools/generate.mjs reads them from an Owl-Academy
+  clone's git object store and runs them in memory to compute the expected values. No part of their code is in this
   repository; the vector files hold only inputs and the values those functions return.
-- The Hyperbolic Lexicon's reference/lexicon/chain.py and the Engram reference's reference/engram/ttmpt.py
+- Owl-Academy scripts/biomesh-core.js (MIT, (c) Ebayednoob), the strict verifier, at commit
+  f1d31afd48f8424348972b4d68abf8e23830a539 (O3), read and run by contract_vectors/tools/generate.mjs the same way (for
+  shdccp2_tamper and shdccp2_tamper_open). No part of its code is in this repository.
+- BioChain-AI src/identity/crypto-core.js and src/identity/epoch-service.js (MIT, (c) Schism-Labs-AI), at commit
+  dfbe3f2e94c2ff8101f39054bedf29ec67f75704, read and run by contract_vectors/tools/generate.mjs the same way (for
+  attest1_profile and attest1_profile_open); and BioChain-AI protocol/codex_engine.py and protocol/shdccp_kernel.py (MIT, (c) Schism-Labs-AI) at
+  the same commit, which contract_vectors/tools/check.py imports from a BioChain-AI checkout at test time only, as the
+  BIOSEED/1 oracle. No part of their code is in this repository.
+- The Hyperbolic Lexicon's reference/lexicon/chain.py, manifest.py, attest.py and verify.py (with the modules verify.py
+  imports, records.py, wordpiece.py, normalise.py, unicode_tables.py and wordnet.py, and the V0 vocabulary and Unicode
+  table in reference/golden), the Hyperbolic Oracles' hpstep package and the Engram reference's reference/engram/ttmpt.py
   (Ebayednoob, GPL-3.0), at commit 5522c0506e20edb4a70c850c7d433221ed6ea883. contract_vectors/tools/check.py imports
-  them from an Ebayednoob checkout at test time only, as an independent oracle. No part of them is in this repository.
+  them from an Ebayednoob checkout at test time only, as an independent oracle (attest.py with the cryptography package,
+  Apache-2.0 OR BSD-3-Clause). No part of them is in this repository.
+- contract_vectors/tools/cv_spec.mjs and the RFC 07 reading are written from public specifications (RFC 6962, RFC
+  9162, RFC 6979, SEC 1, FIPS 186-4, X.690, RFC 7518); the first eight entries of rfc6962_lists are the RFC 6962 test
+  entries used by the certificate-transparency project (short byte strings, data only).
 - SHD-CCP Geometric_Engine/ecosystem/SHD-CCP/geometric-engine-spec/test_vectors/schema.json (MIT, Copyright (c) 2026
   Schism-Labs-AI), at commit 97d90ac954e23423b1ece8d38ffbe72b6b6a36e7. contract_vectors/schema.json follows its
   envelope fields and copies two parts of it verbatim: the schema of the `binary` property and the `spec_version`

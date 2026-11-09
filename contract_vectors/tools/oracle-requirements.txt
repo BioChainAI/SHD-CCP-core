@@ -1,9 +1,23 @@
 # SPDX-License-Identifier: CC0-1.0
 # Part of contract_vectors/ (CC0-1.0, see ../LICENSE).
-# The Lexicon oracle's one third-party dependency (its hpstep package imports numpy), pinned by version and hash.
-# numpy 2.5.3 is the version the 207-case agreement of 2026-11-07 ran with (Python 3.13). The hashes cover the
-# manylinux x86-64 wheels for CPython 3.12 and 3.13, which is what CI installs:
+# The oracle's third-party dependencies, pinned by version and hash: numpy (the Lexicon's hpstep package imports it)
+# and cryptography (the Lexicon's attest.py: ECDSA P-256, RFC 6979 deterministic signing, DER), with cryptography's
+# own dependencies cffi and pycparser. numpy 2.5.3 is the version the 207-case agreement of 2026-11-07 ran with and
+# cryptography 50.0.1 the one of 2026-11-08 (Python 3.13). The hashes cover the manylinux x86-64 wheels for CPython
+# 3.12 and 3.13 (cryptography's are abi3 wheels), which is what CI installs:
 #   python -m pip install --require-hashes --only-binary=:all: -r contract_vectors/tools/oracle-requirements.txt
 numpy==2.5.3 \
     --hash=sha256:a5fa86b80fd24bcd1aff83ad23be44ea323de3f787be8f8b15d4a65621e25321 \
     --hash=sha256:b7e18c623bb5c95acb3b3328861272816ba199fb531921c5d6d0b675f1fde9e3
+cryptography==50.0.1 \
+    --hash=sha256:ff838d62ec1bfce4f9ba7fa16f4a7b554cd8d0c299e6be37502161a660c84eef \
+    --hash=sha256:51593d180cf6d179bde5c5d065bed81386b1f381656ae7d042b7ffc87a9895ad \
+    --hash=sha256:51afcfceb15597cf2635068e4ac9a56b2abde622edde17f37d85fd7b5306497a \
+    --hash=sha256:e22dfed744bd4002e909464cb23d2f0b05c6f3113a79ef2e9864a53db737c733 \
+    --hash=sha256:407fe2b6db00939c05c0e945e9914238f2f0a430974839429dafc82b1ee6bee5 \
+    --hash=sha256:9dde0a357190eb3b1da1bb9ab750e9c85cba82ca5977aa0836cbb94e92611239
+cffi==2.1.1 \
+    --hash=sha256:c1453022f490d2459a11819d83ad1d586e9ff65a12ac3e705ffebd46d3685dcf \
+    --hash=sha256:a931079504ecc49efed7744c476a5c343a92fabf66dec2db95edb1b2fdc770e2
+pycparser==3.0 \
+    --hash=sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992
